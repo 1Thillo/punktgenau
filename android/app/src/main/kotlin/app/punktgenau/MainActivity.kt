@@ -47,6 +47,7 @@ import app.punktgenau.ui.StartUi
 import app.punktgenau.ui.ThemeMode
 import app.punktgenau.ui.PlayerViewScreen
 import app.punktgenau.ui.TransferScreen
+import app.punktgenau.ui.SpieltagScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -80,6 +81,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     var showAppointments by remember { mutableStateOf(false) }
     var clubNr by remember { mutableStateOf<String?>(null) }
     var showTransfers by remember { mutableStateOf(false) }
+    var showSpieltag by remember { mutableStateOf(false) }
     var viewPlayer by remember { mutableStateOf<PlayerHit?>(null) }
     var openLeague by remember { mutableStateOf<app.punktgenau.data.GroupRef?>(null) }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
@@ -106,10 +108,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     // Zurück-Geste: stufenweise zurück zum Start, erst dort verlässt sie die App.
-    val canGoBack = showLogin || showAppointments || showTransfers || viewPlayer != null || openLeague != null || clubNr != null || tab != Tab.START
+    val canGoBack = showLogin || showAppointments || showTransfers || showSpieltag || viewPlayer != null || openLeague != null || clubNr != null || tab != Tab.START
     BackHandler(enabled = canGoBack) {
         when {
             showLogin -> showLogin = false
+            showSpieltag -> showSpieltag = false
             openLeague != null -> openLeague = null
             clubNr != null -> clubNr = null
             viewPlayer != null -> viewPlayer = null
@@ -139,6 +142,15 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
 
     if (showTransfers) {
         TransferScreen(app.transfers, association = "RTTVR", onClose = { showTransfers = false })
+        return
+    }
+
+    if (showSpieltag) {
+        SpieltagScreen(
+            app.spieltag,
+            onClose = { showSpieltag = false },
+            onNeedsLogin = { showSpieltag = false; ui = StartUi.LoggedOut; tab = Tab.START },
+        )
         return
     }
 
@@ -212,6 +224,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onOpenCalculator = { tab = Tab.CALCULATOR },
                     onOpenClub = { scope.launch { clubNr = app.teams.ownClubNr() ?: clubNr } },
                     onOpenTransfers = { showTransfers = true },
+                    onOpenSpieltag = { showSpieltag = true },
                 )
                 Tab.HISTORY -> HistoryScreen(
                     events = (ui as? StartUi.Shown)?.profile?.events.orEmpty(),

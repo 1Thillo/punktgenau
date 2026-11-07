@@ -42,6 +42,7 @@ fun StartScreen(
     onOpenCalculator: () -> Unit,
     onOpenClub: () -> Unit,
     onOpenTransfers: () -> Unit,
+    onOpenSpieltag: () -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -97,6 +98,7 @@ fun StartScreen(
                 }
                 OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
                 OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
+                OutlinedButton(onOpenSpieltag, Modifier.fillMaxWidth()) { Text("Spieltag") }
                 OutlinedButton(onRefresh, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
             }
         }

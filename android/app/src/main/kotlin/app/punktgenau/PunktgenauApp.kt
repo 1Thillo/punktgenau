@@ -20,6 +20,7 @@ class PunktgenauApp : Application() {
     val playerRepo by lazy { app.punktgenau.data.PlayerRepository(session, baseUrl) }
     val clickTt by lazy { app.punktgenau.data.ClickTtRepository(session, baseUrl) }
     val teams by lazy { app.punktgenau.data.TeamRepository(session, baseUrl) }
+    val spieltag by lazy { app.punktgenau.data.SpieltagRepository(teams, playerRepo) }
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
 
     /** Darstellung; hell ist der Standard. Wird in den Einstellungen gespeichert. */
