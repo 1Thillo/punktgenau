@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -57,9 +59,12 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
         }
         page?.periods?.takeIf { it.isNotEmpty() }?.let { periods ->
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(period == null, { period = null }, { Text("Standard") })
-                periods.forEach { p -> FilterChip(period == p, { period = p }, { Text(p.label) }) }
+            // Einzeilig und horizontal scrollbar: umbrechende Chips haben die Kopfzeile aufgebläht.
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(period == null, { period = null }, { Text("Standard", maxLines = 1, softWrap = false) })
+                periods.forEach { p ->
+                    FilterChip(period == p, { period = p }, { Text(p.label, maxLines = 1, softWrap = false) })
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
