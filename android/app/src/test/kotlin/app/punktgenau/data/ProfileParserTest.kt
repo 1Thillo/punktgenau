@@ -37,6 +37,11 @@ class RatingOnTest {
         {"event_date_time":"2026-11-06 19:00:00","ttr_before":1288,"ttr_after":1299}]}"""
     private val events = ProfileParser.parseEvents(body)
 
+    @org.junit.Test fun ereignisAmSpieltag_nimmtBefore() {
+        org.junit.Assert.assertEquals(1288, ProfileParser.ratingOn(events, java.time.LocalDate.of(2026, 11, 6)))
+        org.junit.Assert.assertEquals(1280, ProfileParser.ratingOn(events, java.time.LocalDate.of(2026, 10, 29)))
+    }
+
     @org.junit.Test fun stand_vorDemTag() {
         org.junit.Assert.assertEquals(1288, ProfileParser.ratingOn(events, java.time.LocalDate.of(2026, 11, 6)))
         org.junit.Assert.assertEquals(1299, ProfileParser.ratingOn(events, java.time.LocalDate.of(2026, 11, 20)))

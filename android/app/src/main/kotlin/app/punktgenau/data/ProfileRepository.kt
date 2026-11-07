@@ -88,11 +88,13 @@ object ProfileParser {
     }
 
     /**
-     * TTR, der am Spieltag galt: Stand nach dem letzten Ereignis **vor** dem Tag; gibt es keins,
+     * TTR, der am Spieltag galt: gibt es am Tag ein Ereignis, dessen Wert davor; sonst der Stand nach dem
+     * letzten Ereignis **vor** dem Tag; gibt es keins,
      * der Wert vor dem frühesten Ereignis. Null, wenn der Verlauf keine Ereignisse enthält.
      */
     fun ratingOn(events: List<HistoryEvent>, day: java.time.LocalDate): Int? {
         if (events.isEmpty()) return null
+        events.firstOrNull { it.date == day }?.let { return it.before } // Wert, mit dem das Spiel gewertet wurde
         return events.lastOrNull { it.date < day }?.after ?: events.first().before
     }
 
