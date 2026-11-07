@@ -47,6 +47,14 @@ class PlayerRepository(private val session: SessionManager, private val baseUrl:
         }
     }
 
+    /** Ereignisse aus dem Verlauf eines Spielers (leer bei Fehlern, kein Abbruch). */
+    suspend fun events(nuId: String): List<HistoryEvent> = try {
+        val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nuId")!!).build())
+        if (AuthDetector.isUnauthenticated(r.body)) emptyList() else ProfileParser.parseEvents(r.body)
+    } catch (e: java.io.IOException) {
+        emptyList()
+    }
+
     suspend fun ratings(nuId: String, day: java.time.LocalDate? = null): RatingOutcome {
         return try {
             val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nuId")!!).build())

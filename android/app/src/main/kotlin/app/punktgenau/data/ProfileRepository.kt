@@ -11,7 +11,14 @@ import okhttp3.HttpUrl
 import okhttp3.Request
 
 /** Eigene Werte. [ttr] ist nur gesetzt, wenn der Server ihn dem Konto liefert. */
-data class HistoryEvent(val date: java.time.LocalDate, val before: Int, val after: Int)
+data class HistoryEvent(
+    val date: java.time.LocalDate,
+    val before: Int,
+    val after: Int,
+    val type: String = "",
+    val name: String = "",
+    val dateTime: String = "",
+)
 
 data class OwnProfile(
     val name: String?,
@@ -79,12 +86,28 @@ object ProfileParser {
         val arr = root["event"] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
         return arr.mapNotNull { el ->
             val o = el as? JsonObject ?: return@mapNotNull null
-            val date = (o["event_date_time"] as? JsonPrimitive)?.content?.take(10)
+            val raw = (o["event_date_time"] as? JsonPrimitive)?.content.orEmpty()
+            val date = raw.take(10)
                 ?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() } ?: return@mapNotNull null
             val before = intField(o, "ttr_before") ?: return@mapNotNull null
             val after = intField(o, "ttr_after") ?: before
-            HistoryEvent(date, before, after)
+            fun text(k: String) = (o[k] as? JsonPrimitive)?.content.orEmpty()
+            HistoryEvent(date, before, after, text("type"), text("event_name"), raw)
         }.sortedBy { it.date }
+    }
+
+    /**
+     * Rückspiel gegen einen Gegner: das erste Mannschaftsspiel mit ihm nach dem Hinspiel (oder das zweite der
+     * Saison, wenn das Hinspiel unbekannt ist). Null, wenn es noch nicht gespielt wurde.
+     */
+    fun returnLegOf(
+        events: List<HistoryEvent>,
+        opponentName: String,
+        firstLeg: java.time.LocalDate?,
+        seasonStart: java.time.LocalDate,
+    ): HistoryEvent? {
+        val meets = events.filter { it.type == "meeting" && it.date >= seasonStart && it.name.contains(opponentName, ignoreCase = true) }
+        return if (firstLeg != null) meets.firstOrNull { it.date > firstLeg } else meets.getOrNull(1)
     }
 
     /**

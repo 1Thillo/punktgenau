@@ -25,6 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.punktgenau.data.Appointment
+import app.punktgenau.data.HistoryEvent
+import app.punktgenau.data.ProfileParser
+import app.punktgenau.data.Season
 import app.punktgenau.data.PlayerRepository
 import app.punktgenau.data.RatingOutcome
 import app.punktgenau.data.Result
@@ -60,6 +63,8 @@ fun AppointmentScreen(
     var lineup by remember { mutableStateOf<List<TeamMember>>(emptyList()) }
     var team by remember { mutableStateOf<TeamInfo?>(null) }
     var useDate by remember { mutableStateOf(true) }
+    var round by remember { mutableStateOf(0) } // 0 = Hinrunde, 1 = Rückrunde
+    var meetings by remember { mutableStateOf<List<HistoryEvent>>(emptyList()) }
     val added = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
 
@@ -74,12 +79,13 @@ fun AppointmentScreen(
 
     fun openDates(t0: TeamInfo) {
         team = t0; step = Step.Dates(t0); busy = true; message = null
-        scope.launch { handle(teams.schedule(t0.id)) { dates = it; if (it.isEmpty()) message = "Keine Termine gefunden." } }
+        if (ownNuId != null) scope.launch { meetings = players.events(ownNuId) }
+        scope.launch { handle(teams.schedule(t0.id, t0.season)) { dates = it; if (it.isEmpty()) message = "Keine Termine gefunden." } }
     }
 
     fun openLineup(a: Appointment) {
         step = Step.Lineup(a); busy = true; message = null; added.clear()
-        if (useDate && ownNuId != null) scope.launch {
+        if (useDate && ownNuId != null && dayOf(a) != null) scope.launch {
             val own = players.ratings(ownNuId, dayOf(a))
             if (own is RatingOutcome.Values) (own.atDate)?.let(onSetOwn)
         }
@@ -97,7 +103,7 @@ fun AppointmentScreen(
                 is RatingOutcome.Failed -> message = r.message
                 is RatingOutcome.Values -> {
                     val v = (if (useDate) r.atDate else null) ?: r.ttr ?: r.qttr
-                    if (useDate && r.atDate == null) message = "Kein Verlauf zum Termin gefunden, aktueller Wert verwendet."
+                    if (useDate && dayOf(lineupAppointment()) != null && r.atDate == null) message = "Kein Verlauf zum Termin gefunden, aktueller Wert verwendet."
                     if (v == null) message = "Kein Wert für ${m.displayName} erhalten."
                     else { onAddOpponent(v); added.add(id) }
                 }
@@ -131,6 +137,16 @@ fun AppointmentScreen(
             },
             style = MaterialTheme.typography.titleLarge,
         )
+        if (step is Step.Dates) {
+            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(round == 0, { round = 0 }, { Text("Hinrunde") })
+                FilterChip(round == 1, { round = 1 }, { Text("Rückrunde") })
+            }
+            if (round == 1) Text(
+                "Die Website liefert pro Gegner nur einen Termin. Rückspiele erscheinen mit Datum, sobald sie in deinem Verlauf stehen, sonst mit offenem Termin und aktuellen Werten.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
         if (step is Step.Lineup) {
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(useDate, { useDate = true }, { Text("Wert zum Termin") })
@@ -147,7 +163,14 @@ fun AppointmentScreen(
         LazyColumn {
             when (step) {
                 Step.Teams -> items(teamList) { t -> ListEntry(t.name, t.league) { openDates(t) } }
-                is Step.Dates -> items(dates) { a -> ListEntry(a.opponentName, formatDate(a.date)) { openLineup(a) } }
+                is Step.Dates -> {
+                    val seasonStart = Season.start(LocalDate.now())
+                    val shown = if (round == 0) dates else dates.map { a ->
+                        val ev = ProfileParser.returnLegOf(meetings, a.opponentName, dayOf(a), seasonStart)
+                        a.copy(date = ev?.dateTime)
+                    }.sortedWith(compareBy(nullsLast()) { it.date })
+                    items(shown) { a -> ListEntry(a.opponentName, formatDate(a.date) ?: "Termin offen") { openLineup(a) } }
+                }
                 is Step.Lineup -> items(lineup) { m ->
                     val done = m.nuId != null && m.nuId in added
                     ListEntry((m.rank?.let { "$it. " } ?: "") + m.displayName, if (done) "hinzugefügt" else null) { addPlayer(m) }

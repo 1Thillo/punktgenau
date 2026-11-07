@@ -11,7 +11,7 @@ import okhttp3.HttpUrl
 import okhttp3.Request
 import java.time.LocalDate
 
-data class TeamInfo(val id: String, val name: String, val league: String?)
+data class TeamInfo(val id: String, val name: String, val league: String?, val season: String? = null)
 data class Appointment(val date: String?, val opponentTeamId: String, val opponentName: String)
 data class TeamMember(val firstName: String, val lastName: String, val nuId: String?, val rank: Int?) {
     val displayName get() = "$firstName $lastName".trim()
@@ -25,6 +25,9 @@ sealed interface Result<out T> {
 
 /** Saisonbezeichnung wie "26/27"; Wechsel zum 1. Juli (, noch am echten Konto zu prüfen). */
 object Season {
+    /** Erster Tag der Saison (1. Juli). */
+    fun start(today: LocalDate): LocalDate = LocalDate.of(if (today.monthValue >= 7) today.year else today.year - 1, 7, 1)
+
     fun label(today: LocalDate): String {
         val start = if (today.monthValue >= 7) today.year else today.year - 1
         return "%02d/%02d".format(start % 100, (start + 1) % 100)
@@ -64,9 +67,9 @@ class TeamRepository(
         Result.Ok(teams)
     }
 
-    suspend fun schedule(teamId: String): Result<List<Appointment>> = guarded {
+    suspend fun schedule(teamId: String, season: String? = null): Result<List<Appointment>> = guarded {
         val url = baseUrl.newBuilder().encodedPath("/api/ttr/team/schedule")
-            .addQueryParameter("teamId", teamId).addQueryParameter("season", Season.label(today())).build()
+            .addQueryParameter("teamId", teamId).addQueryParameter("season", season ?: Season.label(today())).build()
         val r = session.fetch(Request.Builder().url(url).build())
         if (AuthDetector.isUnauthenticated(r.body)) return@guarded Result.NeedsLogin
         val list = TeamParser.parseSchedule(r.body) ?: return@guarded Result.Failed("Die Termine waren nicht lesbar.")
@@ -104,7 +107,7 @@ object TeamParser {
         val inSeason = items.filter { it.str("season") == season }.ifEmpty { items }
         return inSeason.mapNotNull { o ->
             val id = o.str("team_id") ?: return@mapNotNull null
-            TeamInfo(id, o.str("team_name") ?: "Mannschaft $id", o.str("league_name") ?: o.str("league"))
+            TeamInfo(id, o.str("team_name") ?: "Mannschaft $id", o.str("league_name") ?: o.str("league"), o.str("season"))
         }
     }
 
