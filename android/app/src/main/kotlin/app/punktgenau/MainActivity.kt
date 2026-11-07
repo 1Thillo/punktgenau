@@ -49,6 +49,7 @@ import app.punktgenau.ui.PlayerViewScreen
 import app.punktgenau.ui.TransferScreen
 import app.punktgenau.ui.SpieltagScreen
 import app.punktgenau.ui.FollowScreen
+import app.punktgenau.ui.SpielberichtScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -84,6 +85,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     var showTransfers by remember { mutableStateOf(false) }
     var showSpieltag by remember { mutableStateOf(false) }
     var showFollow by remember { mutableStateOf(false) }
+    var report by remember { mutableStateOf<Pair<String, String>?>(null) }
     var viewPlayer by remember { mutableStateOf<PlayerHit?>(null) }
     var openLeague by remember { mutableStateOf<app.punktgenau.data.GroupRef?>(null) }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
@@ -110,10 +112,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     // Zurück-Geste: stufenweise zurück zum Start, erst dort verlässt sie die App.
-    val canGoBack = showLogin || showAppointments || showTransfers || showSpieltag || showFollow || viewPlayer != null || openLeague != null || clubNr != null || tab != Tab.START
+    val canGoBack = showLogin || showAppointments || showTransfers || showSpieltag || showFollow || report != null || viewPlayer != null || openLeague != null || clubNr != null || tab != Tab.START
     BackHandler(enabled = canGoBack) {
         when {
             showLogin -> showLogin = false
+            report != null -> report = null
             showFollow -> showFollow = false
             showSpieltag -> showSpieltag = false
             openLeague != null -> openLeague = null
@@ -148,6 +151,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         return
     }
 
+    report?.let { (url, title) ->
+        SpielberichtScreen(app.spielbericht, url = url, title = title, onClose = { report = null })
+        return
+    }
+
     if (showFollow) {
         FollowScreen(app.clubs, app.follow, onClose = { showFollow = false })
         return
@@ -159,6 +167,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
             onClose = { showSpieltag = false },
             onNeedsLogin = { showSpieltag = false; ui = StartUi.LoggedOut; tab = Tab.START },
             onOpenFollow = { showFollow = true },
+            onOpenReport = { url, title -> report = url to title },
         )
         return
     }

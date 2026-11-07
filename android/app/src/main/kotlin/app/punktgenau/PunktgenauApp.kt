@@ -21,6 +21,7 @@ class PunktgenauApp : Application() {
     val clickTt by lazy { app.punktgenau.data.ClickTtRepository(session, baseUrl) }
     val teams by lazy { app.punktgenau.data.TeamRepository(session, baseUrl) }
     val follow by lazy { app.punktgenau.data.FollowStore(getSharedPreferences("follow", MODE_PRIVATE)) }
+    val spielbericht by lazy { app.punktgenau.data.SpielberichtRepository(session) }
     val spieltag by lazy { app.punktgenau.data.SpieltagRepository(teams, playerRepo, follow) }
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
 

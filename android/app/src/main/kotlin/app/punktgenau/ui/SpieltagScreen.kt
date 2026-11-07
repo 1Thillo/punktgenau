@@ -24,11 +24,8 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,7 +44,13 @@ import java.util.Locale
  * Die Ø-TTR kommt aus der Meldeliste der Mannschaft; sie ist eine Näherung, keine Aufstellung.
  */
 @Composable
-fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: () -> Unit, onOpenFollow: () -> Unit) {
+fun SpieltagScreen(
+    repo: SpieltagRepository,
+    onClose: () -> Unit,
+    onNeedsLogin: () -> Unit,
+    onOpenFollow: () -> Unit,
+    onOpenReport: (String, String) -> Unit,
+) {
     var matches by remember { mutableStateOf<List<SpieltagMatch>?>(null) }
     var failed by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
@@ -115,7 +118,7 @@ fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: 
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dayMatches.isEmpty()) item { InfoText("Keine Spiele an diesem Tag.") }
-                items(dayMatches) { match -> MatchCard(match, averages) }
+                items(dayMatches) { match -> MatchCard(match, averages, onOpenReport) }
                 item {
                     OutlinedButton({ reload++ }, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
                     Spacer(Modifier.height(16.dp))
@@ -126,8 +129,7 @@ fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: 
 }
 
 @Composable
-private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>) {
-    val context = LocalContext.current
+private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>, onOpenReport: (String, String) -> Unit) {
     val report = match.appointment.let { a ->
         val meeting = a.meetingId
         val league = a.leagueId
@@ -142,8 +144,9 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>)
     val oppId = match.appointment.opponentTeamId
     val homeId = if (home) ownId else oppId
     val awayId = if (home) oppId else ownId
-    val homeName = if (home) match.team.name else match.appointment.opponentName
-    val awayName = if (home) match.appointment.opponentName else match.team.name
+    val ownLabel = match.team.club?.let { "$it – ${match.team.name}" } ?: match.team.name
+    val homeName = if (home) ownLabel else match.appointment.opponentName
+    val awayName = if (home) match.appointment.opponentName else ownLabel
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -160,7 +163,7 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>)
         if (report != null) {
             Spacer(Modifier.height(6.dp))
             OutlinedButton(
-                { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(report))) },
+                { onOpenReport(report, "$homeName gegen $awayName") },
                 Modifier.fillMaxWidth(),
             ) { Text("Spielbericht öffnen") }
         }

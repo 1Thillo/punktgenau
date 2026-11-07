@@ -45,12 +45,13 @@ fun FollowScreen(clubs: ClubRepository, store: FollowStore, onClose: () -> Unit)
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val found = remember { mutableStateListOf<ClubTeam>() }
+    var foundClub by remember { mutableStateOf("") }
     val followed = remember { mutableStateListOf<TeamInfo>().also { it.addAll(store.load()) } }
     val scope = rememberCoroutineScope()
     BackHandler(onBack = onClose)
 
     fun toggle(t: ClubTeam) {
-        val info = TeamInfo(t.teamId, t.name, t.league.ifBlank { null }, t.season.ifBlank { null }, t.groupId, t.organization)
+        val info = TeamInfo(t.teamId, t.name, t.league.ifBlank { null }, t.season.ifBlank { null }, t.groupId, t.organization, foundClub.ifBlank { null })
         if (followed.any { it.id == t.teamId }) {
             store.remove(t.teamId)
             followed.removeAll { it.id == t.teamId }
@@ -58,6 +59,11 @@ fun FollowScreen(clubs: ClubRepository, store: FollowStore, onClose: () -> Unit)
             store.add(info)
             followed.add(info)
         }
+    }
+
+    fun remove(id: String) {
+        store.remove(id)
+        followed.removeAll { it.id == id }
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
@@ -85,6 +91,7 @@ fun FollowScreen(clubs: ClubRepository, store: FollowStore, onClose: () -> Unit)
                         when (val r = clubs.load(ref.clubNr, ref.association, Season.label(LocalDate.now()))) {
                             is Result.Ok -> {
                                 if (r.value.teams.isEmpty()) status = "Der Verein hat keine Mannschaften in dieser Saison."
+                                foundClub = r.value.info?.name ?: query.trim()
                                 found.addAll(r.value.teams)
                             }
                             else -> status = "Die Mannschaften konnten nicht geladen werden."
@@ -103,19 +110,22 @@ fun FollowScreen(clubs: ClubRepository, store: FollowStore, onClose: () -> Unit)
                 item { SectionLabel("Mannschaften des Vereins") }
                 items(found) { t ->
                     val on = followed.any { it.id == t.teamId }
-                    TeamToggleRow(t.name, t.league, on) { toggle(t) }
+                    TeamToggleRow(label(foundClub, t.name), t.league, on) { toggle(t) }
                 }
             }
             if (followed.isNotEmpty()) {
                 item { SectionLabel("Gemerkt") }
                 items(followed.toList()) { t ->
-                    TeamToggleRow(t.name, t.league.orEmpty(), true) { toggle(ClubTeam(t.id, t.name, t.league.orEmpty(), t.groupId.orEmpty(), t.season.orEmpty(), t.organization.orEmpty(), null)) }
+                    TeamToggleRow(label(t.club, t.name), t.league.orEmpty(), true) { remove(t.id) }
                 }
             }
             item { Spacer(Modifier.height(16.dp)) }
         }
     }
 }
+
+/** Verein und Mannschaft in einer Zeile, damit gleiche Mannschaftsnamen verschiedener Vereine unterscheidbar sind. */
+private fun label(club: String?, team: String): String = if (club.isNullOrBlank()) team else "$club – $team"
 
 @Composable
 private fun TeamToggleRow(name: String, league: String, followed: Boolean, onToggle: () -> Unit) {

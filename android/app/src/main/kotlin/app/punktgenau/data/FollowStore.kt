@@ -17,7 +17,7 @@ class FollowStore(private val prefs: SharedPreferences) {
     }
 
     private fun encode(t: TeamInfo): String =
-        listOf(t.id, t.name, t.league.orEmpty(), t.season.orEmpty(), t.groupId.orEmpty(), t.organization.orEmpty())
+        listOf(t.id, t.name, t.league.orEmpty(), t.season.orEmpty(), t.groupId.orEmpty(), t.organization.orEmpty(), t.club.orEmpty())
             .joinToString(SEP)
 
     private fun decode(s: String): TeamInfo? {
@@ -30,6 +30,7 @@ class FollowStore(private val prefs: SharedPreferences) {
             season = p[3].ifBlank { null },
             groupId = p[4].ifBlank { null },
             organization = p[5].ifBlank { null },
+            club = p.getOrNull(6)?.ifBlank { null },
         )
     }
 

@@ -18,6 +18,8 @@ data class TeamInfo(
     val season: String? = null,
     val groupId: String? = null,
     val organization: String? = null,
+    /** Vereinsname, nur bei gemerkten Mannschaften bekannt; sonst null. */
+    val club: String? = null,
 )
 
 /** Ein Mannschaftsspiel aus dem Spielplan. [result] steht nur bei gespielten Spielen (Heim:Gast). */
