@@ -1,0 +1,36 @@
+# Werkzeuge, Build-Ausgaben, Entpacktes
+tools/
+build/
+.gradle/
+out/
+*.apk
+*.aab
+*.
+*.keystore
+*.jks
+
+extracted/
+# Zugangsdaten / lokale Konfiguration
+local.properties
+*.env
+.env*
+secrets*
+*credentials*
+*.pem
+*.key
+*.log
+logcat*
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+build-android*.log
+
+# 
+/app/
+/settings.gradle.kts
+/build.gradle.kts
+/gradle.properties
+/local.properties
+/_removed_public.xml
+/_*.
