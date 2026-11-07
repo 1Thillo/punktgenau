@@ -123,13 +123,16 @@ fun AppointmentScreen(
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        androidx.compose.foundation.layout.Row { TextButton({
-            when (val s = step) {
-                Step.Teams -> onClose()
-                is Step.Dates -> if (teamList.size > 1) { step = Step.Teams; message = null } else onClose()
-                is Step.Lineup -> { step = Step.Dates(team ?: teamList.first()); message = null }
-            }
-        }) { Text(if (step == Step.Teams) "Schließen" else "Zurück") } }
+        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton({
+                when (step) {
+                    Step.Teams -> onClose()
+                    is Step.Dates -> if (teamList.size > 1) { step = Step.Teams; message = null } else onClose()
+                    is Step.Lineup -> { step = Step.Dates(team ?: teamList.first()); message = null }
+                }
+            }) { Text(if (step == Step.Teams) "Schließen" else "Zurück") }
+            if (step is Step.Lineup || added.isNotEmpty()) TextButton(onClose) { Text(if (added.isEmpty()) "Zum Rechner" else "Fertig, zum Rechner (${added.size})") }
+        }
         Text(
             when (step) {
                 Step.Teams -> "Mannschaft wählen"

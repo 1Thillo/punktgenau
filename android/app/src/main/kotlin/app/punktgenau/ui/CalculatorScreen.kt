@@ -46,14 +46,16 @@ class GameRow(opponent: String = "", won: Boolean = false) {
 
 /** Zustand des Rechners; wird von mehreren Screens genutzt (Suche fügt Gegner hinzu). */
 class CalculatorState {
-    var ownText by mutableStateOf("1500")
+    var ownText by mutableStateOf("")
     var age by mutableStateOf(AgeGroup.ADULT)
     var fewSingles by mutableStateOf(false)
     var breakFlag by mutableStateOf(false)
-    val rows = mutableStateListOf(GameRow("1500"), GameRow("1500"))
+    val rows = mutableStateListOf(GameRow())
 
+    /** Füllt zuerst eine leere Zeile, sonst kommt eine neue dazu. */
     fun addOpponent(rating: Int) {
-        rows.add(GameRow(rating.toString()))
+        val empty = rows.firstOrNull { it.opponent.isBlank() }
+        if (empty != null) empty.opponent = rating.toString() else rows.add(GameRow(rating.toString()))
     }
 }
 
@@ -76,7 +78,7 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {})
         item { ScreenTitle("Rechner") }
         item {
             AppCard {
-                val change = result?.change
+                val change = if (games.isEmpty()) null else result?.change
                 val (text, color) = when {
                     change == null -> "–" to MaterialTheme.colorScheme.onSurface
                     else -> deltaText(change)
@@ -88,14 +90,14 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {})
                     color = color,
                     modifier = Modifier.semantics {
                         contentDescription = when {
-                            change == null -> "Keine Berechnung"
+                            change == null -> "Noch keine Berechnung"
                             change > 0 -> "Gewinn von $change Punkten"
                             change < 0 -> "Verlust von ${-change} Punkten"
                             else -> "Keine Änderung"
                         }
                     },
                 )
-                if (result != null) {
+                if (result != null && games.isNotEmpty()) {
                     Text("${result.ownRating} → ${result.newRating}", style = MaterialTheme.typography.titleLarge)
                     Text("ÄK ${result.alterationConstant}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
