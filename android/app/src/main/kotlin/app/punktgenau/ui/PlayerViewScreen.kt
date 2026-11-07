@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,7 +35,14 @@ import app.punktgenau.data.PlayerRepository
  * Es wird nicht als dieser Spieler angemeldet; das Konto bleibt das eigene.
  */
 @Composable
-fun PlayerViewScreen(repo: PlayerRepository, nuId: String, name: String, club: String?, onClose: () -> Unit) {
+fun PlayerViewScreen(
+    repo: PlayerRepository,
+    nuId: String,
+    name: String,
+    club: String?,
+    onClose: () -> Unit,
+    onUseInCalculator: (Int) -> Unit,
+) {
     var outcome by remember { mutableStateOf<PlayerHistoryOutcome?>(null) }
     LaunchedEffect(nuId) { outcome = repo.history(nuId) }
     BackHandler(onBack = onClose)
@@ -57,6 +65,10 @@ fun PlayerViewScreen(repo: PlayerRepository, nuId: String, name: String, club: S
                     Text(if (h.ttr != null) "TTR" else "Q-TTR", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(value?.toString() ?: "–", fontSize = 56.sp, fontWeight = FontWeight.Bold)
                     h.qttr?.takeIf { h.ttr != null }?.let { Text("Q-TTR $it", style = MaterialTheme.typography.bodyMedium) }
+                    if (value != null) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton({ onUseInCalculator(value) }, Modifier.fillMaxWidth()) { Text("Im Rechner als mein Wert nehmen") }
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 SectionLabel("Verlauf")

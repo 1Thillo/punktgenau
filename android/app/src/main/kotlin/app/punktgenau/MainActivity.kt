@@ -138,7 +138,18 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     viewPlayer?.let { p ->
-        PlayerViewScreen(app.playerRepo, nuId = p.nuId.orEmpty(), name = p.displayName, club = p.club, onClose = { viewPlayer = null })
+        PlayerViewScreen(
+            app.playerRepo,
+            nuId = p.nuId.orEmpty(),
+            name = p.displayName,
+            club = p.club,
+            onClose = { viewPlayer = null },
+            onUseInCalculator = { value ->
+                calc.ownText = value.toString()
+                viewPlayer = null
+                tab = Tab.CALCULATOR
+            },
+        )
         return
     }
 
