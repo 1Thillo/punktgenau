@@ -18,6 +18,10 @@ data class HistoryEvent(
     val type: String = "",
     val name: String = "",
     val dateTime: String = "",
+    val delta: Int = 0,
+    val won: Int = 0,
+    val lost: Int = 0,
+    val ak: Int? = null,
 )
 
 data class OwnProfile(
@@ -25,6 +29,7 @@ data class OwnProfile(
     val nuId: String?,
     val ttr: Int?,
     val qttr: Int?,
+    val events: List<HistoryEvent> = emptyList(),
 )
 
 /** Ergebnis eines Abrufs: Daten oder ein verständlicher Grund. */
@@ -46,7 +51,7 @@ class ProfileRepository(private val session: SessionManager, private val baseUrl
             val hist = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nu")!!).build())
             if (AuthDetector.isUnauthenticated(hist.body)) return Loaded.NeedsLogin
             val values = ProfileParser.parseHistory(hist.body)
-            Loaded.Ok(me.copy(ttr = values.first, qttr = values.second))
+            Loaded.Ok(me.copy(ttr = values.first, qttr = values.second, events = ProfileParser.parseEvents(hist.body)))
         } catch (e: java.io.IOException) {
             Loaded.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
@@ -92,7 +97,13 @@ object ProfileParser {
             val before = intField(o, "ttr_before") ?: return@mapNotNull null
             val after = intField(o, "ttr_after") ?: before
             fun text(k: String) = (o[k] as? JsonPrimitive)?.content.orEmpty()
-            HistoryEvent(date, before, after, text("type"), text("event_name"), raw)
+            HistoryEvent(
+                date, before, after, text("type"), text("event_name"), raw,
+                delta = intField(o, "ttr_delta") ?: (after - before),
+                won = intField(o, "matches_won") ?: 0,
+                lost = intField(o, "matches_lost") ?: 0,
+                ak = intField(o, "alteration_constant"),
+            )
         }.sortedBy { it.date }
     }
 

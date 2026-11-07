@@ -1,10 +1,11 @@
 package app.punktgenau.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,7 +13,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -21,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,14 +73,13 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {})
         modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item { ScreenTitle("Rechner") }
         item {
-            Column(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            AppCard {
                 val change = result?.change
                 val (text, color) = when {
                     change == null -> "–" to MaterialTheme.colorScheme.onSurface
-                    change > 0 -> "▲ +$change" to PositiveGreen
-                    change < 0 -> "▼ −${-change}" to NegativeRed
-                    else -> "● 0" to Color.Gray
+                    else -> deltaText(change)
                 }
                 Text(
                     text,
@@ -96,7 +97,7 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {})
                 )
                 if (result != null) {
                     Text("${result.ownRating} → ${result.newRating}", style = MaterialTheme.typography.titleLarge)
-                    Text("ÄK ${result.alterationConstant}", style = MaterialTheme.typography.bodyMedium)
+                    Text("ÄK ${result.alterationConstant}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -111,51 +112,52 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {})
             )
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(age == AgeGroup.UNDER_21, { age = if (age == AgeGroup.UNDER_21) AgeGroup.ADULT else AgeGroup.UNDER_21 }, { Text("unter 21") })
-                FilterChip(age == AgeGroup.UNDER_16, { age = if (age == AgeGroup.UNDER_16) AgeGroup.ADULT else AgeGroup.UNDER_16 }, { Text("unter 16") })
+            AppCard {
+                Text("Änderungskonstante", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(age == AgeGroup.UNDER_21, { age = if (age == AgeGroup.UNDER_21) AgeGroup.ADULT else AgeGroup.UNDER_21 }, { Text("unter 21") })
+                    FilterChip(age == AgeGroup.UNDER_16, { age = if (age == AgeGroup.UNDER_16) AgeGroup.ADULT else AgeGroup.UNDER_16 }, { Text("unter 16") })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("weniger als 30 Einzel", Modifier.weight(1f))
+                    Switch(fewSingles, { fewSingles = it })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("1 Jahr Pause, danach < 15 Einzel", Modifier.weight(1f))
+                    Switch(breakFlag, { breakFlag = it })
+                }
             }
         }
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("weniger als 30 Einzel", Modifier.weight(1f))
-                Switch(fewSingles, { fewSingles = it })
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("1 Jahr Pause, danach < 15 Einzel", Modifier.weight(1f))
-                Switch(breakFlag, { breakFlag = it })
-            }
-        }
+        item { SectionLabel("Spiele") }
         itemsIndexed(rows) { index, row ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = row.opponent,
-                    onValueChange = { row.opponent = it.filter(Char::isDigit).take(4) },
-                    label = { Text("Gegner ${index + 1}") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                FilterChip(
-                    selected = row.won,
-                    onClick = { row.won = !row.won },
-                    label = { Text(if (row.won) "Sieg" else "Niederlage") },
-                    colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = PositiveGreen,
-                        selectedLabelColor = Color.White,
-                        containerColor = NegativeRed.copy(alpha = 0.85f),
-                        labelColor = Color.White,
-                    ),
-                    border = null,
-                )
-                TextButton({ rows.removeAt(index) }) { Text("✕") }
+            AppCard {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = row.opponent,
+                        onValueChange = { row.opponent = it.filter(Char::isDigit).take(4) },
+                        label = { Text("Gegner ${index + 1}") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    FilterChip(
+                        selected = row.won,
+                        onClick = { row.won = !row.won },
+                        label = { Text(if (row.won) "Sieg" else "Niederlage") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PositiveGreen,
+                            selectedLabelColor = Color.White,
+                            containerColor = NegativeRed,
+                            labelColor = Color.White,
+                        ),
+                        border = null,
+                    )
+                    TextButton({ rows.removeAt(index) }) { Text("✕") }
+                }
             }
         }
-        item {
-            Button({ rows.add(GameRow()) }, Modifier.fillMaxWidth()) { Text("Spiel hinzufügen") }
-        }
-        item {
-            androidx.compose.material3.OutlinedButton(onLoadAppointment, Modifier.fillMaxWidth().padding(bottom = 24.dp)) { Text("Aus Termin laden") }
-        }
+        item { Button({ rows.add(GameRow()) }, Modifier.fillMaxWidth()) { Text("Spiel hinzufügen") } }
+        item { OutlinedButton(onLoadAppointment, Modifier.fillMaxWidth()) { Text("Aus Termin laden") } }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }

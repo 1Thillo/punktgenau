@@ -136,7 +136,7 @@ fun AppointmentScreen(
                 is Step.Dates -> "Termin wählen"
                 is Step.Lineup -> "Gegner antippen, um sie zum Rechner hinzuzufügen"
             },
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMedium,
         )
         if (step is Step.Dates) {
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -158,7 +158,7 @@ fun AppointmentScreen(
         }
         if (busy) CircularProgressIndicator()
         message?.let { Text(it) }
-        LazyColumn {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (step) {
                 Step.Teams -> items(teamList) { t -> ListEntry(t.name, t.league) { openDates(t) } }
                 is Step.Dates -> items(dates) { a ->
@@ -186,8 +186,8 @@ private fun formatDate(iso: String?): String? {
 
 @Composable
 private fun ListEntry(title: String, subtitle: String?, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp)) {
+    AppCard(onClick = onClick) {
         Text(title, style = MaterialTheme.typography.titleMedium)
-        subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }

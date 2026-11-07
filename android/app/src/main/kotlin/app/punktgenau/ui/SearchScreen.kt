@@ -76,6 +76,7 @@ fun SearchScreen(repo: PlayerRepository, onAddToCalculator: (Int) -> Unit, onNee
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ScreenTitle("Suche")
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -83,14 +84,14 @@ fun SearchScreen(repo: PlayerRepository, onAddToCalculator: (Int) -> Unit, onNee
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { runSearch() }),
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
         )
         Button({ runSearch() }, enabled = !busy && query.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Suchen") }
         if (busy) CircularProgressIndicator()
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
 
         selected?.let { sel ->
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            AppCard {
                 Text(sel.player.displayName, style = MaterialTheme.typography.titleLarge)
                 sel.player.club?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 when (val o = sel.outcome) {
@@ -113,11 +114,11 @@ fun SearchScreen(repo: PlayerRepository, onAddToCalculator: (Int) -> Unit, onNee
             }
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(hits) { p ->
-                Column(Modifier.fillMaxWidth().clickable { select(p) }.padding(vertical = 10.dp)) {
+                AppCard(onClick = { select(p) }) {
                     Text(p.displayName, style = MaterialTheme.typography.titleMedium)
-                    p.club?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    p.club?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         }
