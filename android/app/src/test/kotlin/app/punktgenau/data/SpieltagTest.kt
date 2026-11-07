@@ -57,6 +57,14 @@ class SpieltagTest {
     }
 
     @Test
+    fun reportUrlUsesSeasonWithDoubleDashAndBothIds() {
+        assertEquals(
+            "https://www.mytischtennis.de/click-tt/RTTVR/26--27/ligen/x/gruppe/518414/spielbericht/15898549/x",
+            Spieltag.reportUrl("RTTVR", "26/27", "518414", "15898549"),
+        )
+    }
+
+    @Test
     fun matchDayAndTimeFromIsoDate() {
         val m = match("2026-11-08T19:30:00")
         assertEquals(LocalDate.of(2026, 11, 8), m.day)

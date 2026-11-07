@@ -29,6 +29,10 @@ object Spieltag {
         return if (i >= 0) i else days.lastIndex
     }
 
+    /** Adresse des Spielberichts auf der Website; die Namensteile der Adresse sind beliebig, die Kennungen zählen. */
+    fun reportUrl(org: String, season: String, leagueId: String, meetingId: String): String =
+        "https://www.mytischtennis.de/click-tt/$org/${season.replace("/", "--")}/ligen/x/gruppe/$leagueId/spielbericht/$meetingId/x"
+
     /** Mittelwert der [n] höchsten Werte, auf ganze Punkte gerundet. Leer → null. */
     fun topAverage(values: List<Int>, n: Int = 4): Int? {
         val top = values.sortedDescending().take(n)

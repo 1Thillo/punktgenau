@@ -27,6 +27,9 @@ data class Appointment(
     val opponentName: String,
     val home: Boolean? = null,
     val result: String? = null,
+    /** Spielbericht-Kennung (meeting_id) und Liga-Kennung (league_id) aus dem Spielplan. */
+    val meetingId: String? = null,
+    val leagueId: String? = null,
 )
 
 /** Ansicht des Spielplans: gesamt, Vorrunde, Rückrunde (wie auf der Website). */
@@ -182,7 +185,7 @@ object TeamParser {
                     val won = o.str("matches_won")?.toIntOrNull() ?: 0
                     val lost = o.str("matches_lost")?.toIntOrNull() ?: 0
                     val result = if (won + lost > 0) "$won:$lost" else null
-                    out.add(Appointment(o.str("date"), oppId, oppName, isHome, result))
+                    out.add(Appointment(o.str("date"), oppId, oppName, isHome, result, o.str("meeting_id"), o.str("league_id")))
                 }
             }
         }

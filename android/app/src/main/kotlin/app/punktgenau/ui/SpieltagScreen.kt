@@ -24,14 +24,18 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.punktgenau.data.Result
 import app.punktgenau.data.Spieltag
 import app.punktgenau.data.SpieltagMatch
+import app.punktgenau.data.Season
 import app.punktgenau.data.SpieltagRepository
 import app.punktgenau.data.TeamAverage
 import java.time.LocalDate
@@ -122,6 +126,16 @@ fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: 
 
 @Composable
 private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>) {
+    val context = LocalContext.current
+    val report = match.appointment.let { a ->
+        val meeting = a.meetingId
+        val league = a.leagueId
+        if (a.result != null && meeting != null && league != null) {
+            Spieltag.reportUrl(match.team.organization ?: "RTTVR", match.team.season ?: Season.label(LocalDate.now()), league, meeting)
+        } else {
+            null
+        }
+    }
     val home = match.appointment.home == true
     val ownId = match.team.id
     val oppId = match.appointment.opponentTeamId
@@ -142,6 +156,13 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>)
         Spacer(Modifier.height(6.dp))
         TeamLine(homeName, averageText(averages, homeId), bold = homeId == ownId)
         TeamLine(awayName, averageText(averages, awayId), bold = awayId == ownId)
+        if (report != null) {
+            Spacer(Modifier.height(6.dp))
+            OutlinedButton(
+                { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(report))) },
+                Modifier.fillMaxWidth(),
+            ) { Text("Spielbericht öffnen") }
+        }
     }
 }
 
