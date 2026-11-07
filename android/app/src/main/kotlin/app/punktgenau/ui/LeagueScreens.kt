@@ -198,7 +198,7 @@ private fun HubTile(title: String, subtitle: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun RankBadge(rank: Int, highlight: Boolean = false) {
+internal fun RankBadge(rank: Int, highlight: Boolean = false) {
     Surface(
         shape = CircleShape,
         color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,

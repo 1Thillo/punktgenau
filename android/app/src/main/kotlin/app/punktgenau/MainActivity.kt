@@ -2,6 +2,7 @@ package app.punktgenau
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -99,6 +100,18 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         if (app.jar.hasAuthCookie()) refresh() else ui = StartUi.LoggedOut
     }
 
+    // Zurück-Geste: stufenweise zurück zum Start, erst dort verlässt sie die App.
+    val canGoBack = showLogin || showAppointments || openLeague != null || clubNr != null || tab != Tab.START
+    BackHandler(enabled = canGoBack) {
+        when {
+            showLogin -> showLogin = false
+            showAppointments -> { showAppointments = false; tab = Tab.CALCULATOR }
+            openLeague != null -> openLeague = null
+            clubNr != null -> clubNr = null
+            else -> tab = Tab.START
+        }
+    }
+
     if (showLogin) {
         LoginScreen(
             startUrl = app.baseUrl.toString(),
@@ -112,20 +125,23 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         return
     }
 
+    openLeague?.let { g ->
+        LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = true, initial = g, onBack = { openLeague = null })
+        return
+    }
+
     clubNr?.let { nr ->
         ClubScreen(
             clubs = app.clubs,
+            clickTt = app.clickTt,
+            teams = app.teams,
+            players = app.playerRepo,
             clubNr = nr,
             association = "RTTVR",
             season = Season.label(java.time.LocalDate.now()),
             onClose = { clubNr = null },
-            onOpenLeague = { openLeague = it; clubNr = null },
+            onOpenLeague = { openLeague = it },
         )
-        return
-    }
-
-    openLeague?.let { g ->
-        LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = true, initial = g, onBack = { openLeague = null })
         return
     }
 

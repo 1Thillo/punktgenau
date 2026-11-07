@@ -110,6 +110,10 @@ class ClickTtRepository(private val session: SessionManager, private val baseUrl
 
     suspend fun teamPlayers(g: GroupRef, teamId: String, filter: String = "gesamt"): Result<List<PlayerLine>> =
         load("${groupPath(g)}/mannschaft/$teamId/x/spielerbilanzen/$filter", TEAM + "spielerbilanzen.\$filter", ClickTtParser::teamPlayers)
+
+    /** Mannschaftskontakt (clubData) und Heimspiellokale aus dem Spielplan der Mannschaft. */
+    suspend fun teamDetails(g: GroupRef, teamId: String): Result<TeamDetails> =
+        load("${groupPath(g)}/mannschaft/$teamId/x/spielplan/gesamt", TEAM + "_layout", ClickTtParser::teamDetails)
 }
 
 object ClickTtParser {
@@ -185,6 +189,28 @@ object ClickTtParser {
             }
         }
         return out.sortedBy { it.date }
+    }
+
+    /** `clubData.team_contact` plus Heimspiele aus `data.meetings_excerpt.meetings` mit ihren Orten. */
+    fun teamDetails(root: JsonObject): TeamDetails? {
+        val club = root["clubData"].obj() ?: return null
+        val c = club["team_contact"].obj()
+        val contact = c?.let { TeamContact(it.str("contact_name"), it.str("phone_mobile") ?: it.str("phone_home"), it.str("email_home")) }
+        val teamName = club.str("team_name")
+        val days = (root["data"].obj()?.get("meetings_excerpt").obj()?.get("meetings")) as? JsonArray
+        val venues = LinkedHashMap<String, Venue>()
+        for (day in days.orEmpty()) {
+            for (list in day.obj()?.values.orEmpty()) {
+                for (m in list.arr().orEmpty()) {
+                    val o = m.obj() ?: continue
+                    if (teamName == null || o.str("team_home") != teamName) continue
+                    val loc = o["location"].obj() ?: continue
+                    val v = ClubParser.venue(loc) ?: continue
+                    venues.putIfAbsent(v.query, v)
+                }
+            }
+        }
+        return TeamDetails(contact, venues.values.toList())
     }
 
     fun ranking(root: JsonObject): List<BalanceRow>? =

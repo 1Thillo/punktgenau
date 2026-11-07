@@ -19,7 +19,25 @@ data class ClubTeam(
     val rank: String?,
 )
 
-data class ClubInfo(val name: String, val region: String?, val contactName: String?, val contactPhone: String?, val contactEmail: String?)
+/** Adresse eines Spiellokals; [query] ist der Text für die Navigation. */
+data class Venue(val name: String, val street: String, val zip: String, val city: String) {
+    val query: String
+        get() = listOf(street, listOf(zip, city).filter { it.isNotBlank() }.joinToString(" ")).filter { it.isNotBlank() }.joinToString(", ")
+}
+
+data class TeamContact(val name: String?, val phone: String?, val email: String?)
+
+/** Mannschaftskontakt und die Heimspiellokale der Mannschaft (aus dem Spielplan der Mannschaft). */
+data class TeamDetails(val contact: TeamContact?, val homeVenues: List<Venue>)
+
+data class ClubInfo(
+    val name: String,
+    val region: String?,
+    val contactName: String?,
+    val contactPhone: String?,
+    val contactEmail: String?,
+    val venues: List<Venue> = emptyList(),
+)
 
 data class Club(val info: ClubInfo?, val teams: List<ClubTeam>)
 
@@ -58,16 +76,17 @@ object ClubParser {
 
     fun info(body: String): ClubInfo? {
         val data = root(body)?.get("data") as? JsonObject ?: return null
-        val contact = ((data["club_infos"] as? JsonObject)?.get("club_contacts") as? JsonArray)
-            ?.firstOrNull() as? JsonObject
-        val official = ((data["club_infos"] as? JsonObject)?.get("club_officials") as? JsonArray)
-            ?.firstOrNull() as? JsonObject
+        val infos = data["club_infos"] as? JsonObject
+        val contacts = (infos?.get("club_contacts") as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
+        val official = (infos?.get("club_officials") as? JsonArray)?.firstOrNull() as? JsonObject
+        val contact = contacts.firstOrNull { it.str("label")?.startsWith("Kontakt") == true } ?: contacts.firstOrNull()
         return ClubInfo(
             name = data.str("club_name") ?: return null,
             region = data.str("region_name"),
             contactName = official?.str("contact_name") ?: contact?.str("contact_name"),
             contactPhone = official?.str("phone_mobile") ?: contact?.str("phone_home"),
             contactEmail = contact?.str("email_home"),
+            venues = contacts.filter { it.str("label")?.startsWith("Spiellokal") == true }.mapNotNull { venue(it) },
         )
     }
 
@@ -86,5 +105,18 @@ object ClubParser {
                 rank = o.str("table_rank"),
             )
         }
+    }
+
+    /** Adresse aus einem Kontakt- oder Ortsobjekt (Felder street, zipcode/zip, city, label/contact_name). */
+    fun venue(o: JsonObject): Venue? {
+        val street = o.str("street").orEmpty()
+        val city = o.str("city").orEmpty()
+        if (street.isBlank() && city.isBlank()) return null
+        return Venue(
+            name = o.str("contact_name") ?: o.str("label") ?: "",
+            street = street,
+            zip = o.str("zipcode") ?: o.str("zip") ?: "",
+            city = city,
+        )
     }
 }
