@@ -43,9 +43,10 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
     var applied by remember { mutableStateOf("") }
     var state by remember { mutableStateOf<Result<TransferPage>?>(null) }
 
-    LaunchedEffect(incoming, period, applied) {
+    // Der Server filtert nach Name nicht; die Namenssuche passiert unten im Browser, wie auf der Website.
+    LaunchedEffect(incoming, period) {
         state = null
-        state = repo.load(association, incoming, period?.from, applied)
+        state = repo.load(association, incoming, period?.from, "")
     }
     BackHandler(onBack = onClose)
 
@@ -81,8 +82,9 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
             when (val s = state) {
                 null -> item { LoadingBox() }
                 is Result.Ok -> {
-                    item { InfoText("${s.value.transfers.size} Wechsel") }
-                    items(s.value.transfers) { t: Transfer -> TransferCard(t) }
+                    val shown = s.value.transfers.filter { applied.isBlank() || it.name.contains(applied.trim(), ignoreCase = true) }
+                    item { InfoText("${shown.size} Wechsel") }
+                    items(shown) { t: Transfer -> TransferCard(t) }
                 }
                 Result.NeedsLogin -> item { InfoText("Bitte zuerst anmelden.") }
                 is Result.Failed -> item { InfoText(s.message) }
