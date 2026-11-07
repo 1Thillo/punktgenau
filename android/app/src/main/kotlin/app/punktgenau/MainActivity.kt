@@ -198,6 +198,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                 Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown)
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
+                    advanced = app.advancedSearch,
                     onAddToCalculator = { calc.addOpponent(it); tab = Tab.CALCULATOR },
                     onNeedsLogin = { ui = StartUi.LoggedOut; tab = Tab.START },
                 )
