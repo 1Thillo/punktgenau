@@ -60,7 +60,7 @@ class CalculatorState {
 }
 
 @Composable
-fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {}) {
+fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {}, onResetOwn: () -> Unit = {}) {
     var ownText by state::ownText
     var age by state::age
     var fewSingles by state::fewSingles
@@ -112,6 +112,7 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {})
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            OutlinedButton(onResetOwn, Modifier.fillMaxWidth()) { Text("Mein TTR neu setzen") }
         }
         item {
             AppCard {

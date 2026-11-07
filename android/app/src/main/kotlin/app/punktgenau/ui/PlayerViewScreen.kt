@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.punktgenau.data.ClubRef
+import app.punktgenau.data.ClubRepository
 import app.punktgenau.data.PlayerHistoryOutcome
 import app.punktgenau.data.PlayerRepository
 
@@ -32,20 +34,27 @@ import app.punktgenau.data.PlayerRepository
 @Composable
 fun PlayerViewScreen(
     repo: PlayerRepository,
+    clubs: ClubRepository,
     nuId: String,
     name: String,
     club: String?,
     onClose: () -> Unit,
     onUseInCalculator: (Int) -> Unit,
+    onOpenClub: (ClubRef) -> Unit,
 ) {
     var outcome by remember { mutableStateOf<PlayerHistoryOutcome?>(null) }
+    var clubRef by remember { mutableStateOf<ClubRef?>(null) }
     LaunchedEffect(nuId) { outcome = repo.history(nuId) }
+    LaunchedEffect(club) { clubRef = club?.let { clubs.findClub(it) } }
     BackHandler(onBack = onClose)
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }
         ScreenTitle("Sicht von $name")
         club?.let { InfoText(it) }
+        clubRef?.let { ref ->
+            OutlinedButton({ onOpenClub(ref) }, Modifier.fillMaxWidth()) { Text("Verein ansehen (Mannschaften, Liga)") }
+        }
         Spacer(Modifier.height(8.dp))
         InfoText("Öffentliche Werte dieses Spielers. Du bist dabei nicht als er angemeldet.")
         Spacer(Modifier.height(8.dp))

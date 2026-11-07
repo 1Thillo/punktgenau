@@ -110,11 +110,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     BackHandler(enabled = canGoBack) {
         when {
             showLogin -> showLogin = false
+            openLeague != null -> openLeague = null
+            clubNr != null -> clubNr = null
             viewPlayer != null -> viewPlayer = null
             showAppointments -> { showAppointments = false; tab = Tab.CALCULATOR }
             showTransfers -> showTransfers = false
-            openLeague != null -> openLeague = null
-            clubNr != null -> clubNr = null
             else -> tab = Tab.START
         }
     }
@@ -137,22 +137,6 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         return
     }
 
-    viewPlayer?.let { p ->
-        PlayerViewScreen(
-            app.playerRepo,
-            nuId = p.nuId.orEmpty(),
-            name = p.displayName,
-            club = p.club,
-            onClose = { viewPlayer = null },
-            onUseInCalculator = { value ->
-                calc.ownText = value.toString()
-                viewPlayer = null
-                tab = Tab.CALCULATOR
-            },
-        )
-        return
-    }
-
     if (showTransfers) {
         TransferScreen(app.transfers, association = "RTTVR", onClose = { showTransfers = false })
         return
@@ -169,6 +153,25 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
             season = Season.label(java.time.LocalDate.now()),
             onClose = { clubNr = null },
             onOpenLeague = { openLeague = it },
+        )
+        return
+    }
+
+    // Liegt über dem Verein-Screen nicht, sondern darunter: Schließen des Vereins führt zurück hierher.
+    viewPlayer?.let { p ->
+        PlayerViewScreen(
+            app.playerRepo,
+            clubs = app.clubs,
+            nuId = p.nuId.orEmpty(),
+            name = p.displayName,
+            club = p.club,
+            onClose = { viewPlayer = null },
+            onUseInCalculator = { value ->
+                calc.ownText = value.toString()
+                viewPlayer = null
+                tab = Tab.CALCULATOR
+            },
+            onOpenClub = { ref -> clubNr = ref.clubNr },
         )
         return
     }
@@ -214,7 +217,13 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     events = (ui as? StartUi.Shown)?.profile?.events.orEmpty(),
                     loggedIn = ui is StartUi.Shown,
                 )
-                Tab.CALCULATOR -> CalculatorScreen(calc, onLoadAppointment = { showAppointments = true })
+                Tab.CALCULATOR -> CalculatorScreen(
+                    calc,
+                    onLoadAppointment = { showAppointments = true },
+                    onResetOwn = {
+                        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString() } }
+                    },
+                )
                 Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown)
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,

@@ -41,6 +41,9 @@ data class ClubInfo(
 
 data class Club(val info: ClubInfo?, val teams: List<ClubTeam>)
 
+/** Vereinsnummer und Verband (z. B. RTTVR) eines Vereins. */
+data class ClubRef(val clubNr: String, val association: String)
+
 /** Verein: Stammdaten und Mannschaften (öffentliche click-tt-Seiten, Remix-JSON). */
 class ClubRepository(private val session: SessionManager, private val baseUrl: HttpUrl) {
 
@@ -56,6 +59,15 @@ class ClubRepository(private val session: SessionManager, private val baseUrl: H
         if (info == null && teams.isEmpty()) Result.Failed("Keine Vereinsdaten gefunden.") else Result.Ok(Club(info, teams))
     } catch (e: java.io.IOException) {
         Result.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
+    }
+
+    /** Vereinsnummer und Verband zu einem Vereinsnamen, über die Vereinssuche; nur ein genauer Treffer zählt. */
+    suspend fun findClub(name: String): ClubRef? = try {
+        val body = okhttp3.FormBody.Builder().add("query", name.trim()).build()
+        val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/search/clubs")!!).post(body).build())
+        ClubParser.clubRef(r.body, name)
+    } catch (e: java.io.IOException) {
+        null
     }
 
     private fun page(base: String, leaf: String, route: String): HttpUrl =
@@ -105,6 +117,18 @@ object ClubParser {
                 rank = o.str("table_rank"),
             )
         }
+    }
+
+    /** Genauer Treffer (Name ohne Groß-/Kleinschreibung) aus der Vereinssuche. */
+    fun clubRef(body: String, name: String): ClubRef? {
+        val results = root(body)?.get("results") as? JsonArray ?: return null
+        return results.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val clubName = o.str("clubname") ?: return@mapNotNull null
+            val nr = o.str("clubnr") ?: return@mapNotNull null
+            if (!clubName.equals(name.trim(), ignoreCase = true)) return@mapNotNull null
+            ClubRef(nr, o.str("organization_short") ?: "RTTVR")
+        }.firstOrNull()
     }
 
     /** Adresse aus einem Kontakt- oder Ortsobjekt (Felder street, zipcode/zip, city, label/contact_name). */
