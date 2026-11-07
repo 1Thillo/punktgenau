@@ -1,17 +1,13 @@
 package app.punktgenau.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -26,12 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.punktgenau.data.HistoryEvent
 import app.punktgenau.data.PlayerHistoryOutcome
 import app.punktgenau.data.PlayerRepository
 
 /**
- * Ansicht aus Sicht eines anderen Spielers: dessen öffentliche TTR-Werte und Verlauf.
+ * Ansicht aus Sicht eines anderen Spielers: dessen öffentliche TTR-Werte und Verlauf (Liste und Diagramm).
  * Es wird nicht als dieser Spieler angemeldet; das Konto bleibt das eigene.
  */
 @Composable
@@ -71,27 +66,9 @@ fun PlayerViewScreen(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                SectionLabel("Verlauf")
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(h.events.reversed()) { e: HistoryEvent -> HistoryRow(e) }
-                    item { Spacer(Modifier.height(16.dp)) }
-                }
+                // Derselbe Verlaufs-Screen wie beim eigenen Konto: Spiele und Diagramm.
+                HistoryScreen(events = h.events, loggedIn = true, modifier = Modifier.weight(1f).fillMaxWidth(), showTitle = false)
             }
         }
-    }
-}
-
-@Composable
-private fun HistoryRow(e: HistoryEvent) {
-    AppCard {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(e.name.ifBlank { e.type }, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).padding(end = 8.dp))
-            Text("${e.after}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-        }
-        Text(
-            "${e.date}  ·  ${e.before} → ${e.after}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }

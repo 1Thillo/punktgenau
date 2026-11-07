@@ -34,14 +34,19 @@ import java.time.LocalDate
 
 /** TTR-Verlauf: Liste der Ereignisse (neueste zuerst) oder Diagramm. */
 @Composable
-fun HistoryScreen(events: List<HistoryEvent>, loggedIn: Boolean) {
+fun HistoryScreen(
+    events: List<HistoryEvent>,
+    loggedIn: Boolean,
+    modifier: Modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp),
+    showTitle: Boolean = true,
+) {
     var view by remember { mutableIntStateOf(0) } // 0 = Spiele, 1 = Diagramm
     var range by remember { mutableIntStateOf(0) } // 0 = Saison, 1 = 1 Jahr, 2 = Alles
     val today = LocalDate.now()
     val seasonStart = LocalDate.of(if (today.monthValue >= 7) today.year else today.year - 1, 7, 1)
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ScreenTitle("TTR-Verlauf")
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (showTitle) ScreenTitle("TTR-Verlauf")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(view == 0, { view = 0 }, { Text("Spiele") })
             FilterChip(view == 1, { view = 1 }, { Text("Diagramm") })
