@@ -45,15 +45,20 @@ object Spieltag {
  * Spieltag-Übersicht: Spiele der eigenen Mannschaften (öffentlicher Spielplan) und die Ø-TTR je Mannschaft
  * aus ihrer Meldeliste (öffentliche TTR-Werte; Abruf nur mit Anmeldung).
  */
-class SpieltagRepository(private val teams: TeamRepository, private val players: PlayerRepository) {
+class SpieltagRepository(
+    private val teams: TeamRepository,
+    private val players: PlayerRepository,
+    private val follow: FollowStore,
+) {
 
-    /** Alle Spiele der eigenen Mannschaften der laufenden Saison. */
+    /** Alle Spiele der eigenen und der gemerkten Mannschaften der laufenden Saison. */
     suspend fun ownMatches(): Result<List<SpieltagMatch>> {
-        val mine = when (val r = teams.myTeams()) {
+        val own = when (val r = teams.myTeams()) {
             is Result.Ok -> r.value
             Result.NeedsLogin -> return Result.NeedsLogin
             is Result.Failed -> return r
         }
+        val mine = (own + follow.load()).distinctBy { it.id }
         val out = ArrayList<SpieltagMatch>()
         for (team in mine) {
             when (val s = teams.schedule(team, ScheduleFilter.ALL)) {

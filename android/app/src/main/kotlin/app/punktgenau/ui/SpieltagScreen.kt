@@ -47,7 +47,7 @@ import java.util.Locale
  * Die Ø-TTR kommt aus der Meldeliste der Mannschaft; sie ist eine Näherung, keine Aufstellung.
  */
 @Composable
-fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: () -> Unit) {
+fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: () -> Unit, onOpenFollow: () -> Unit) {
     var matches by remember { mutableStateOf<List<SpieltagMatch>?>(null) }
     var failed by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
@@ -85,7 +85,8 @@ fun SpieltagScreen(repo: SpieltagRepository, onClose: () -> Unit, onNeedsLogin: 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }
         ScreenTitle("Spieltag")
-        InfoText("Spiele deiner Mannschaften. Ø-TTR: die vier höchsten Werte aus der Meldeliste (TTR, sonst Q-TTR).")
+        InfoText("Spiele deiner Mannschaften und der gemerkten. Ø-TTR: die vier höchsten Werte aus der Meldeliste (TTR, sonst Q-TTR).")
+        OutlinedButton(onOpenFollow, Modifier.fillMaxWidth()) { Text("Mannschaften merken") }
         Spacer(Modifier.height(8.dp))
         val f = failed
         val m = matches
