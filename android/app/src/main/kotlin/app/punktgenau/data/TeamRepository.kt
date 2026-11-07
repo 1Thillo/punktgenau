@@ -68,6 +68,14 @@ class TeamRepository(
             Result.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
 
+    /** Vereinsnummer aus der Startseite (für die Vereinsseite). */
+    suspend fun ownClubNr(): String? = try {
+        val home = session.fetch(Request.Builder().url(baseUrl.resolve("/community?show=everything")!!).build())
+        clubNr.find(home.body)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+    } catch (e: java.io.IOException) {
+        null
+    }
+
     suspend fun myTeams(): Result<List<TeamInfo>> = guarded {
         val home = session.fetch(Request.Builder().url(baseUrl.resolve("/community?show=everything")!!).build())
         if (AuthDetector.isUnauthenticated(home.body)) return@guarded Result.NeedsLogin

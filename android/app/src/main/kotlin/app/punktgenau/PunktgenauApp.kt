@@ -28,5 +28,6 @@ class PunktgenauApp : Application() {
             .getOrDefault(app.punktgenau.ui.ThemeMode.LIGHT)
         set(value) { prefs.edit().putString("theme", value.name).apply() }
 
+    val clubs by lazy { app.punktgenau.data.ClubRepository(session, baseUrl) }
     val profiles by lazy { ProfileRepository(session, baseUrl) }
 }

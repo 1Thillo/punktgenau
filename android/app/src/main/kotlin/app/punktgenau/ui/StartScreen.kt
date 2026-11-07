@@ -40,6 +40,7 @@ fun StartScreen(
     onLogout: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenCalculator: () -> Unit,
+    onOpenClub: () -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -93,6 +94,7 @@ fun StartScreen(
                     Button(onOpenCalculator, Modifier.weight(1f)) { Text("Rechner") }
                     OutlinedButton(onOpenHistory, Modifier.weight(1f)) { Text("Verlauf") }
                 }
+                OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
                 OutlinedButton(onRefresh, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
             }
         }

@@ -66,8 +66,8 @@ private sealed interface Nav {
 
 /** Liga-Reiter: eigene Ligen, Ligenauswahl, Seiten der Gruppe. */
 @Composable
-fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: PlayerRepository, loggedIn: Boolean) {
-    var nav by remember { mutableStateOf<Nav>(Nav.Home) }
+fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: PlayerRepository, loggedIn: Boolean, initial: GroupRef? = null, onBack: (() -> Unit)? = null) {
+    var nav by remember { mutableStateOf<Nav>(if (initial != null) Nav.Hub(initial) else Nav.Home) }
     var myTeams by remember { mutableStateOf<List<TeamInfo>>(emptyList()) }
     LaunchedEffect(loggedIn) {
         if (loggedIn) (teams.myTeams() as? Result.Ok)?.let { myTeams = it.value }
@@ -88,11 +88,11 @@ fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: Pla
         is Nav.TeamPlayers -> Nav.PickTeam(n.group)
         is Nav.TtrRanking -> Nav.Hub(n.group)
     }
-    BackHandler(enabled = nav != Nav.Home) { nav = back(nav) }
+    BackHandler(enabled = nav != Nav.Home || onBack != null) { if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        if (nav != Nav.Home) {
-            TextButton({ nav = back(nav) }) { Text("Zurück") }
+        if (nav != Nav.Home || onBack != null) {
+            TextButton({ if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) }) { Text("Zurück") }
         }
         when (val n = nav) {
             Nav.Home -> LeagueHome(myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onChoose = { nav = Nav.Districts })
