@@ -44,6 +44,7 @@ import app.punktgenau.ui.SearchScreen
 import app.punktgenau.ui.StartScreen
 import app.punktgenau.ui.StartUi
 import app.punktgenau.ui.ThemeMode
+import app.punktgenau.ui.TransferScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -76,6 +77,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     var showLogin by remember { mutableStateOf(false) }
     var showAppointments by remember { mutableStateOf(false) }
     var clubNr by remember { mutableStateOf<String?>(null) }
+    var showTransfers by remember { mutableStateOf(false) }
     var openLeague by remember { mutableStateOf<app.punktgenau.data.GroupRef?>(null) }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
     val scope = rememberCoroutineScope()
@@ -101,11 +103,12 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     // Zurück-Geste: stufenweise zurück zum Start, erst dort verlässt sie die App.
-    val canGoBack = showLogin || showAppointments || openLeague != null || clubNr != null || tab != Tab.START
+    val canGoBack = showLogin || showAppointments || showTransfers || openLeague != null || clubNr != null || tab != Tab.START
     BackHandler(enabled = canGoBack) {
         when {
             showLogin -> showLogin = false
             showAppointments -> { showAppointments = false; tab = Tab.CALCULATOR }
+            showTransfers -> showTransfers = false
             openLeague != null -> openLeague = null
             clubNr != null -> clubNr = null
             else -> tab = Tab.START
@@ -127,6 +130,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
 
     openLeague?.let { g ->
         LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = true, initial = g, onBack = { openLeague = null })
+        return
+    }
+
+    if (showTransfers) {
+        TransferScreen(app.transfers, association = "RTTVR", onClose = { showTransfers = false })
         return
     }
 
@@ -180,6 +188,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onOpenHistory = { tab = Tab.HISTORY },
                     onOpenCalculator = { tab = Tab.CALCULATOR },
                     onOpenClub = { scope.launch { clubNr = app.teams.ownClubNr() ?: clubNr } },
+                    onOpenTransfers = { showTransfers = true },
                 )
                 Tab.HISTORY -> HistoryScreen(
                     events = (ui as? StartUi.Shown)?.profile?.events.orEmpty(),

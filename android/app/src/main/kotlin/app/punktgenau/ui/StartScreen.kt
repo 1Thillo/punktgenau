@@ -41,6 +41,7 @@ fun StartScreen(
     onOpenHistory: () -> Unit,
     onOpenCalculator: () -> Unit,
     onOpenClub: () -> Unit,
+    onOpenTransfers: () -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -95,6 +96,7 @@ fun StartScreen(
                     OutlinedButton(onOpenHistory, Modifier.weight(1f)) { Text("Verlauf") }
                 }
                 OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
+                OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
                 OutlinedButton(onRefresh, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
             }
         }

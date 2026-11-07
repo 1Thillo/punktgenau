@@ -29,5 +29,6 @@ class PunktgenauApp : Application() {
         set(value) { prefs.edit().putString("theme", value.name).apply() }
 
     val clubs by lazy { app.punktgenau.data.ClubRepository(session, baseUrl) }
+    val transfers by lazy { app.punktgenau.data.TransferRepository(session, baseUrl) }
     val profiles by lazy { ProfileRepository(session, baseUrl) }
 }
