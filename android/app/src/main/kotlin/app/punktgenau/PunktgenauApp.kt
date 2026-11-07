@@ -18,6 +18,7 @@ class PunktgenauApp : Application() {
     }
     val session by lazy { SessionManager(jar, buildHttpClient(jar), baseUrl) }
     val playerRepo by lazy { app.punktgenau.data.PlayerRepository(session, baseUrl) }
+    val clickTt by lazy { app.punktgenau.data.ClickTtRepository(session, baseUrl) }
     val teams by lazy { app.punktgenau.data.TeamRepository(session, baseUrl) }
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
 

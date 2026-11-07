@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -33,6 +34,7 @@ import app.punktgenau.ui.AppointmentScreen
 import app.punktgenau.ui.CalculatorScreen
 import app.punktgenau.ui.CalculatorState
 import app.punktgenau.ui.HistoryScreen
+import app.punktgenau.ui.LeagueScreen
 import app.punktgenau.ui.LoginScreen
 import app.punktgenau.ui.PunktgenauTheme
 import app.punktgenau.ui.SearchScreen
@@ -61,6 +63,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     START("Start", Icons.Filled.Home),
     HISTORY("Verlauf", Icons.AutoMirrored.Filled.List),
     CALCULATOR("Rechner", Icons.Filled.Create),
+    LEAGUE("Liga", Icons.Filled.Star),
     SEARCH("Suche", Icons.Filled.Search),
 }
 
@@ -145,6 +148,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     loggedIn = ui is StartUi.Shown,
                 )
                 Tab.CALCULATOR -> CalculatorScreen(calc, onLoadAppointment = { showAppointments = true })
+                Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown)
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
                     onAddToCalculator = { calc.addOpponent(it); tab = Tab.CALCULATOR },
