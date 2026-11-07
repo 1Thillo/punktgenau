@@ -46,6 +46,7 @@ fun SearchScreen(
     repo: PlayerRepository,
     advanced: AdvancedSearchRepository,
     onAddToCalculator: (Int) -> Unit,
+    onViewPlayer: (PlayerHit) -> Unit,
     onNeedsLogin: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
@@ -197,6 +198,9 @@ fun SearchScreen(
                             },
                         )
                         if (value != null) OutlinedButton({ onAddToCalculator(value) }) { Text("Zum Rechner hinzufügen") }
+                        if (sel.player.nuId != null) {
+                            OutlinedButton({ onViewPlayer(sel.player) }, Modifier.fillMaxWidth()) { Text("Sicht von ${sel.player.firstName}") }
+                        }
                     }
                     RatingOutcome.NeedsLogin -> Unit
                 }

@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.punktgenau.data.Loaded
+import app.punktgenau.data.PlayerHit
 import app.punktgenau.data.Season
 import app.punktgenau.ui.AppointmentScreen
 import app.punktgenau.ui.CalculatorScreen
@@ -44,6 +45,7 @@ import app.punktgenau.ui.SearchScreen
 import app.punktgenau.ui.StartScreen
 import app.punktgenau.ui.StartUi
 import app.punktgenau.ui.ThemeMode
+import app.punktgenau.ui.PlayerViewScreen
 import app.punktgenau.ui.TransferScreen
 import kotlinx.coroutines.launch
 
@@ -78,6 +80,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     var showAppointments by remember { mutableStateOf(false) }
     var clubNr by remember { mutableStateOf<String?>(null) }
     var showTransfers by remember { mutableStateOf(false) }
+    var viewPlayer by remember { mutableStateOf<PlayerHit?>(null) }
     var openLeague by remember { mutableStateOf<app.punktgenau.data.GroupRef?>(null) }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
     val scope = rememberCoroutineScope()
@@ -103,10 +106,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     // Zurück-Geste: stufenweise zurück zum Start, erst dort verlässt sie die App.
-    val canGoBack = showLogin || showAppointments || showTransfers || openLeague != null || clubNr != null || tab != Tab.START
+    val canGoBack = showLogin || showAppointments || showTransfers || viewPlayer != null || openLeague != null || clubNr != null || tab != Tab.START
     BackHandler(enabled = canGoBack) {
         when {
             showLogin -> showLogin = false
+            viewPlayer != null -> viewPlayer = null
             showAppointments -> { showAppointments = false; tab = Tab.CALCULATOR }
             showTransfers -> showTransfers = false
             openLeague != null -> openLeague = null
@@ -130,6 +134,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
 
     openLeague?.let { g ->
         LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = true, initial = g, onBack = { openLeague = null })
+        return
+    }
+
+    viewPlayer?.let { p ->
+        PlayerViewScreen(app.playerRepo, nuId = p.nuId.orEmpty(), name = p.displayName, club = p.club, onClose = { viewPlayer = null })
         return
     }
 
@@ -199,6 +208,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
                     advanced = app.advancedSearch,
+                    onViewPlayer = { viewPlayer = it },
                     onAddToCalculator = { calc.addOpponent(it); tab = Tab.CALCULATOR },
                     onNeedsLogin = { ui = StartUi.LoggedOut; tab = Tab.START },
                 )

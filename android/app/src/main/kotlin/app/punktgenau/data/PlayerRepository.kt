@@ -23,6 +23,14 @@ sealed interface SearchOutcome {
     data class Failed(val message: String) : SearchOutcome
 }
 
+data class PlayerHistory(val ttr: Int?, val qttr: Int?, val events: List<HistoryEvent>)
+
+sealed interface PlayerHistoryOutcome {
+    data class Ok(val history: PlayerHistory) : PlayerHistoryOutcome
+    data object NeedsLogin : PlayerHistoryOutcome
+    data class Failed(val message: String) : PlayerHistoryOutcome
+}
+
 sealed interface RatingOutcome {
     /** [atDate] ist der Wert zum gewünschten Tag (falls der Verlauf ihn hergibt), sonst null. */
     data class Values(val ttr: Int?, val qttr: Int?, val atDate: Int? = null) : RatingOutcome
@@ -44,6 +52,20 @@ class PlayerRepository(private val session: SessionManager, private val baseUrl:
             SearchOutcome.Hits(hits)
         } catch (e: java.io.IOException) {
             SearchOutcome.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
+        }
+    }
+
+    /** Öffentliche TTR-Historie eines anderen Spielers (nur Werte, keine Anmeldung als dieser Spieler). */
+    suspend fun history(nuId: String): PlayerHistoryOutcome {
+        return try {
+            val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nuId")!!).build())
+            if (AuthDetector.isUnauthenticated(r.body)) return PlayerHistoryOutcome.NeedsLogin
+            val (ttr, q) = ProfileParser.parseHistory(r.body)
+            val events = ProfileParser.parseEvents(r.body)
+            if (ttr == null && q == null && events.isEmpty()) PlayerHistoryOutcome.Failed("Keine Werte für diesen Spieler.")
+            else PlayerHistoryOutcome.Ok(PlayerHistory(ttr, q, events))
+        } catch (e: java.io.IOException) {
+            PlayerHistoryOutcome.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
     }
 
