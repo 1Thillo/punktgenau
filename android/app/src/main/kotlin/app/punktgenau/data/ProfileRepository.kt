@@ -97,20 +97,6 @@ object ProfileParser {
     }
 
     /**
-     * Rückspiel gegen einen Gegner: das erste Mannschaftsspiel mit ihm nach dem Hinspiel (oder das zweite der
-     * Saison, wenn das Hinspiel unbekannt ist). Null, wenn es noch nicht gespielt wurde.
-     */
-    fun returnLegOf(
-        events: List<HistoryEvent>,
-        opponentName: String,
-        firstLeg: java.time.LocalDate?,
-        seasonStart: java.time.LocalDate,
-    ): HistoryEvent? {
-        val meets = events.filter { it.type == "meeting" && it.date >= seasonStart && it.name.contains(opponentName, ignoreCase = true) }
-        return if (firstLeg != null) meets.firstOrNull { it.date > firstLeg } else meets.getOrNull(1)
-    }
-
-    /**
      * TTR, der am Spieltag galt: gibt es am Tag ein Ereignis, dessen Wert davor; sonst der Stand nach dem
      * letzten Ereignis **vor** dem Tag; gibt es keins,
      * der Wert vor dem frühesten Ereignis. Null, wenn der Verlauf keine Ereignisse enthält.

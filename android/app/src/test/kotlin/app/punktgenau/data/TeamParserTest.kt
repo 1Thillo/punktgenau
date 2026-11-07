@@ -23,9 +23,21 @@ class TeamParserTest {
         assertEquals(1, TeamParser.parseTeams(body, "26/27")!!.size)
     }
 
-    @Test fun termine_sortiert() {
-        val body = """{"data":[{"date":"2026-12-01T19:00:00+01:00","opponent_team_id":"9","opponent_team_name":"B"},{"date":"2026-11-01T19:00:00+01:00","opponent_team_id":"8","opponent_team_name":"A"}]}"""
-        assertEquals(listOf("A", "B"), TeamParser.parseSchedule(body)!!.map { it.opponentName })
+    @Test fun spielplan_ausClickTtSeite() {
+        val body = """{"data":{"meetings_excerpt":{"meetings":[
+            {"2027-02-20":[{"date":"2027-02-20T19:00:00.000+00:00","team_home":"DJK Mayen III","team_away":"TTG Nettetal II","team_home_id":"10","team_away_id":"1","matches_won":"0","matches_lost":"0"}]},
+            {"2026-10-29":[{"date":"2026-10-29T19:00:00.000+00:00","team_home":"TTG Nettetal II","team_away":"TuS Kehrig IV","team_home_id":"1","team_away_id":"11","matches_won":"9","matches_lost":"3"}]}]}}}"""
+        val list = TeamParser.parseSchedule(body, "1")!!
+        assertEquals(listOf("TuS Kehrig IV", "DJK Mayen III"), list.map { it.opponentName })
+        assertEquals(listOf(true, false), list.map { it.home })
+        assertEquals("9:3", list[0].result)
+        assertNull(list[1].result)
+        assertEquals("10", list[1].opponentTeamId)
+    }
+
+    @Test fun spielplan_fremdesSpielWirdIgnoriert() {
+        val body = """{"data":{"meetings_excerpt":{"meetings":[{"2026-10-29":[{"date":"x","team_home":"A","team_away":"B","team_home_id":"5","team_away_id":"6"}]}]}}}"""
+        assertEquals(0, TeamParser.parseSchedule(body, "1")!!.size)
     }
 
     @Test fun spieler_nachRang() {
@@ -34,7 +46,7 @@ class TeamParserTest {
     }
 
     @Test fun unlesbar() {
-        assertNull(TeamParser.parseSchedule("<html>"))
+        assertNull(TeamParser.parseSchedule("<html>", "1"))
         assertNull(TeamParser.parsePlayers("""{"x":1}"""))
     }
 }

@@ -25,9 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.punktgenau.data.Appointment
-import app.punktgenau.data.HistoryEvent
-import app.punktgenau.data.ProfileParser
-import app.punktgenau.data.Season
+import app.punktgenau.data.ScheduleFilter
 import app.punktgenau.data.PlayerRepository
 import app.punktgenau.data.RatingOutcome
 import app.punktgenau.data.Result
@@ -63,8 +61,7 @@ fun AppointmentScreen(
     var lineup by remember { mutableStateOf<List<TeamMember>>(emptyList()) }
     var team by remember { mutableStateOf<TeamInfo?>(null) }
     var useDate by remember { mutableStateOf(true) }
-    var round by remember { mutableStateOf(0) } // 0 = Hinrunde, 1 = Rückrunde
-    var meetings by remember { mutableStateOf<List<HistoryEvent>>(emptyList()) }
+    var filter by remember { mutableStateOf(ScheduleFilter.ALL) }
     val added = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
 
@@ -77,10 +74,14 @@ fun AppointmentScreen(
         }
     }
 
+    fun loadDates(t0: TeamInfo, f: ScheduleFilter) {
+        filter = f; busy = true; message = null; dates = emptyList()
+        scope.launch { handle(teams.schedule(t0, f)) { dates = it; if (it.isEmpty()) message = "Keine Termine gefunden." } }
+    }
+
     fun openDates(t0: TeamInfo) {
         team = t0; step = Step.Dates(t0); busy = true; message = null
-        if (ownNuId != null) scope.launch { meetings = players.events(ownNuId) }
-        scope.launch { handle(teams.schedule(t0.id, t0.season)) { dates = it; if (it.isEmpty()) message = "Keine Termine gefunden." } }
+        loadDates(t0, filter)
     }
 
     fun openLineup(a: Appointment) {
@@ -139,13 +140,10 @@ fun AppointmentScreen(
         )
         if (step is Step.Dates) {
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(round == 0, { round = 0 }, { Text("Hinrunde") })
-                FilterChip(round == 1, { round = 1 }, { Text("Rückrunde") })
+                FilterChip(filter == ScheduleFilter.ALL, { team?.let { loadDates(it, ScheduleFilter.ALL) } }, { Text("Gesamt") })
+                FilterChip(filter == ScheduleFilter.FIRST_HALF, { team?.let { loadDates(it, ScheduleFilter.FIRST_HALF) } }, { Text("Vorrunde") })
+                FilterChip(filter == ScheduleFilter.SECOND_HALF, { team?.let { loadDates(it, ScheduleFilter.SECOND_HALF) } }, { Text("Rückrunde") })
             }
-            if (round == 1) Text(
-                "Die Website liefert pro Gegner nur einen Termin. Rückspiele erscheinen mit Datum, sobald sie in deinem Verlauf stehen, sonst mit offenem Termin und aktuellen Werten.",
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
         if (step is Step.Lineup) {
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -163,13 +161,10 @@ fun AppointmentScreen(
         LazyColumn {
             when (step) {
                 Step.Teams -> items(teamList) { t -> ListEntry(t.name, t.league) { openDates(t) } }
-                is Step.Dates -> {
-                    val seasonStart = Season.start(LocalDate.now())
-                    val shown = if (round == 0) dates else dates.map { a ->
-                        val ev = ProfileParser.returnLegOf(meetings, a.opponentName, dayOf(a), seasonStart)
-                        a.copy(date = ev?.dateTime)
-                    }.sortedWith(compareBy(nullsLast()) { it.date })
-                    items(shown) { a -> ListEntry(a.opponentName, formatDate(a.date) ?: "Termin offen") { openLineup(a) } }
+                is Step.Dates -> items(dates) { a ->
+                    val where = when (a.home) { true -> "Heim"; false -> "Auswärts"; null -> null }
+                    val sub = listOfNotNull(formatDate(a.date), where, a.result?.let { "Ergebnis $it" }).joinToString(" · ")
+                    ListEntry(a.opponentName, sub.ifBlank { null }) { openLineup(a) }
                 }
                 is Step.Lineup -> items(lineup) { m ->
                     val done = m.nuId != null && m.nuId in added

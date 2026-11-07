@@ -11,8 +11,26 @@ import okhttp3.HttpUrl
 import okhttp3.Request
 import java.time.LocalDate
 
-data class TeamInfo(val id: String, val name: String, val league: String?, val season: String? = null)
-data class Appointment(val date: String?, val opponentTeamId: String, val opponentName: String)
+data class TeamInfo(
+    val id: String,
+    val name: String,
+    val league: String?,
+    val season: String? = null,
+    val groupId: String? = null,
+    val organization: String? = null,
+)
+
+/** Ein Mannschaftsspiel aus dem Spielplan. [result] steht nur bei gespielten Spielen (Heim:Gast). */
+data class Appointment(
+    val date: String?,
+    val opponentTeamId: String,
+    val opponentName: String,
+    val home: Boolean? = null,
+    val result: String? = null,
+)
+
+/** Ansicht des Spielplans: gesamt, Vorrunde, Rückrunde (wie auf der Website). */
+enum class ScheduleFilter(val path: String) { ALL("gesamt"), FIRST_HALF("vr"), SECOND_HALF("rr") }
 data class TeamMember(val firstName: String, val lastName: String, val nuId: String?, val rank: Int?) {
     val displayName get() = "$firstName $lastName".trim()
 }
@@ -25,9 +43,6 @@ sealed interface Result<out T> {
 
 /** Saisonbezeichnung wie "26/27"; Wechsel zum 1. Juli (, noch am echten Konto zu prüfen). */
 object Season {
-    /** Erster Tag der Saison (1. Juli). */
-    fun start(today: LocalDate): LocalDate = LocalDate.of(if (today.monthValue >= 7) today.year else today.year - 1, 7, 1)
-
     fun label(today: LocalDate): String {
         val start = if (today.monthValue >= 7) today.year else today.year - 1
         return "%02d/%02d".format(start % 100, (start + 1) % 100)
@@ -35,6 +50,9 @@ object Season {
 }
 
 /** Mannschaften, Termine und Meldelisten ( und 3.4). */
+private const val SCHEDULE_ROUTE =
+    "routes/click-tt+/\$association+/\$season+/\$type+/(\$groupname).gruppe.\$urlid_.mannschaft.\$teamid.\$teamname+/spielplan.\$filter"
+
 class TeamRepository(
     private val session: SessionManager,
     private val baseUrl: HttpUrl,
@@ -67,12 +85,25 @@ class TeamRepository(
         Result.Ok(teams)
     }
 
-    suspend fun schedule(teamId: String, season: String? = null): Result<List<Appointment>> = guarded {
-        val url = baseUrl.newBuilder().encodedPath("/api/ttr/team/schedule")
-            .addQueryParameter("teamId", teamId).addQueryParameter("season", season ?: Season.label(today())).build()
+    /**
+     * Spielplan einer Mannschaft von den click-tt-Seiten der Website (öffentlich, gleiche Daten wie die Ansicht
+     * `.../mannschaft/<ID>/.../spielplan/gesamt|vr|rr`). Die Namensteile der Adresse sind beliebig.
+     */
+    suspend fun schedule(team: TeamInfo, filter: ScheduleFilter): Result<List<Appointment>> = guarded {
+        val org = team.organization
+        val group = team.groupId
+        val season = team.season
+        if (org == null || group == null || season == null) {
+            return@guarded Result.Failed("Für diese Mannschaft fehlen Verband, Gruppe oder Saison.")
+        }
+        val url = baseUrl.newBuilder()
+            .addPathSegments("click-tt/$org/${season.replace("/", "--")}/ligen/x/gruppe/$group/mannschaft/${team.id}/x/spielplan/${filter.path}")
+            .addQueryParameter("_data", SCHEDULE_ROUTE)
+            .build()
         val r = session.fetch(Request.Builder().url(url).build())
         if (AuthDetector.isUnauthenticated(r.body)) return@guarded Result.NeedsLogin
-        val list = TeamParser.parseSchedule(r.body) ?: return@guarded Result.Failed("Die Termine waren nicht lesbar.")
+        val list = TeamParser.parseSchedule(r.body, team.id)
+            ?: return@guarded Result.Failed("Der Spielplan war nicht lesbar.")
         Result.Ok(list)
     }
 
@@ -107,15 +138,48 @@ object TeamParser {
         val inSeason = items.filter { it.str("season") == season }.ifEmpty { items }
         return inSeason.mapNotNull { o ->
             val id = o.str("team_id") ?: return@mapNotNull null
-            TeamInfo(id, o.str("team_name") ?: "Mannschaft $id", o.str("league_name") ?: o.str("league"), o.str("season"))
+            TeamInfo(
+                id, o.str("team_name") ?: "Mannschaft $id", o.str("league_name") ?: o.str("league"),
+                o.str("season"), o.str("group_id"), o.str("team_organisation_short"),
+            )
         }
     }
 
-    fun parseSchedule(body: String): List<Appointment>? =
-        dataList(body)?.mapNotNull { o ->
-            val id = o.str("opponent_team_id") ?: return@mapNotNull null
-            Appointment(o.str("date"), id, o.str("opponent_team_name") ?: "Gegner")
-        }?.sortedBy { it.date }
+    /**
+     * Spielplan aus der Antwort der click-tt-Seite: `data.meetings_excerpt.meetings` ist eine Liste von
+     * Objekten Datum -> Liste von Spielen. Null, wenn der Aufbau nicht passt.
+     */
+    fun parseSchedule(body: String, ownTeamId: String): List<Appointment>? {
+        val root = try {
+            json.parseToJsonElement(body) as? JsonObject
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        val days = ((root["data"] as? JsonObject)?.get("meetings_excerpt") as? JsonObject)?.get("meetings") as? JsonArray
+            ?: return null
+        val out = ArrayList<Appointment>()
+        for (day in days) {
+            for (list in (day as? JsonObject)?.values.orEmpty()) {
+                for (m in (list as? JsonArray).orEmpty()) {
+                    val o = m as? JsonObject ?: continue
+                    val homeId = o.str("team_home_id")
+                    val awayId = o.str("team_away_id")
+                    val isHome = when (ownTeamId) {
+                        homeId -> true
+                        awayId -> false
+                        else -> continue
+                    }
+                    val oppId = (if (isHome) awayId else homeId) ?: continue
+                    val oppName = o.str(if (isHome) "team_away" else "team_home") ?: "Gegner"
+                    val won = o.str("matches_won")?.toIntOrNull() ?: 0
+                    val lost = o.str("matches_lost")?.toIntOrNull() ?: 0
+                    val result = if (won + lost > 0) "$won:$lost" else null
+                    out.add(Appointment(o.str("date"), oppId, oppName, isHome, result))
+                }
+            }
+        }
+        return out.sortedBy { it.date }
+    }
 
     fun parsePlayers(body: String): List<TeamMember>? =
         dataList(body)?.map { o ->
