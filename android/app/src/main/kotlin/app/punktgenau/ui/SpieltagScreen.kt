@@ -144,7 +144,9 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>,
     val oppId = match.appointment.opponentTeamId
     val homeId = if (home) ownId else oppId
     val awayId = if (home) oppId else ownId
-    val ownLabel = match.team.club?.let { "$it – ${match.team.name}" } ?: match.team.name
+    val ownLabel = match.appointment.ownName
+        ?: match.team.club?.let { "$it – ${match.team.name}" }
+        ?: match.team.name
     val homeName = if (home) ownLabel else match.appointment.opponentName
     val awayName = if (home) match.appointment.opponentName else ownLabel
     AppCard {

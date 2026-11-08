@@ -32,6 +32,8 @@ data class Appointment(
     /** Spielbericht-Kennung (meeting_id) und Liga-Kennung (league_id) aus dem Spielplan. */
     val meetingId: String? = null,
     val leagueId: String? = null,
+    /** Name der eigenen Mannschaft wie im Spielplan (Verein + Mannschaft), sofern vorhanden. */
+    val ownName: String? = null,
 )
 
 /** Ansicht des Spielplans: gesamt, Vorrunde, Rückrunde (wie auf der Website). */
@@ -184,10 +186,15 @@ object TeamParser {
                     }
                     val oppId = (if (isHome) awayId else homeId) ?: continue
                     val oppName = o.str(if (isHome) "team_away" else "team_home") ?: "Gegner"
+                    val ownName = o.str(if (isHome) "team_home" else "team_away")
                     val won = o.str("matches_won")?.toIntOrNull() ?: 0
                     val lost = o.str("matches_lost")?.toIntOrNull() ?: 0
                     val result = if (won + lost > 0) "$won:$lost" else null
-                    out.add(Appointment(o.str("date"), oppId, oppName, isHome, result, o.str("meeting_id"), o.str("league_id")))
+                    out.add(
+                        Appointment(
+                            o.str("date"), oppId, oppName, isHome, result, o.str("meeting_id"), o.str("league_id"), ownName,
+                        ),
+                    )
                 }
             }
         }

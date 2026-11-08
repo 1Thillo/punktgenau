@@ -35,6 +35,15 @@ class TeamParserTest {
         assertEquals("10", list[1].opponentTeamId)
     }
 
+    @Test fun spielplan_eigenerName_auswaertsUndHeim() {
+        val body = """{"data":{"meetings_excerpt":{"meetings":[
+            {"2026-10-29":[{"date":"2026-10-29T19:00:00.000+00:00","team_home":"TuS Kaisersesch Erwachsene II","team_away":"DJK Mayen III","team_home_id":"5","team_away_id":"6"}]},
+            {"2026-11-05":[{"date":"2026-11-05T19:00:00.000+00:00","team_home":"DJK Mayen III","team_away":"TuS Kaisersesch Erwachsene II","team_home_id":"6","team_away_id":"5"}]}]}}}"""
+        val list = TeamParser.parseSchedule(body, "5")!!
+        assertEquals(listOf("TuS Kaisersesch Erwachsene II", "TuS Kaisersesch Erwachsene II"), list.map { it.ownName })
+        assertEquals(listOf("DJK Mayen III", "DJK Mayen III"), list.map { it.opponentName })
+    }
+
     @Test fun spielplan_fremdesSpielWirdIgnoriert() {
         val body = """{"data":{"meetings_excerpt":{"meetings":[{"2026-10-29":[{"date":"x","team_home":"A","team_away":"B","team_home_id":"5","team_away_id":"6"}]}]}}}"""
         assertEquals(0, TeamParser.parseSchedule(body, "1")!!.size)
