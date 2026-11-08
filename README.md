@@ -66,4 +66,4 @@ android/app/src/main/kotlin/app/punktgenau/
 - mySpieltag (Premium) ist nicht umgesetzt.
 
 ## Lizenz
-Noch nicht festgelegt.
+MIT, siehe [LICENSE](LICENSE).
