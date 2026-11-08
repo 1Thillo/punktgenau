@@ -34,6 +34,8 @@ data class Appointment(
     val leagueId: String? = null,
     /** Name der eigenen Mannschaft wie im Spielplan (Verein + Mannschaft), sofern vorhanden. */
     val ownName: String? = null,
+    /** Laufendes Spiel laut Spielplan (Feld `live`); nur dann lohnt sich eine Aktualisierung. */
+    val live: Boolean = false,
 )
 
 /** Ansicht des Spielplans: gesamt, Vorrunde, Rückrunde (wie auf der Website). */
@@ -106,7 +108,7 @@ class TeamRepository(
      * Spielplan einer Mannschaft von den click-tt-Seiten der Website (öffentlich, gleiche Daten wie die Ansicht
      * `.../mannschaft/<ID>/.../spielplan/gesamt|vr|rr`). Die Namensteile der Adresse sind beliebig.
      */
-    suspend fun schedule(team: TeamInfo, filter: ScheduleFilter): Result<List<Appointment>> = guarded {
+    suspend fun schedule(team: TeamInfo, filter: ScheduleFilter, fresh: Boolean = false): Result<List<Appointment>> = guarded {
         val org = team.organization
         val group = team.groupId
         val season = team.season
@@ -114,7 +116,7 @@ class TeamRepository(
             return@guarded Result.Failed("Für diese Mannschaft fehlen Verband, Gruppe oder Saison.")
         }
         val cacheKey = "${team.id}|$season|${filter.path}"
-        scheduleCache.get(cacheKey)?.let { return@guarded Result.Ok(it) }
+        if (!fresh) scheduleCache.get(cacheKey)?.let { return@guarded Result.Ok(it) }
         val url = baseUrl.newBuilder()
             .addPathSegments("click-tt/$org/${season.replace("/", "--")}/ligen/x/gruppe/$group/mannschaft/${team.id}/x/spielplan/${filter.path}")
             .addQueryParameter("_data", SCHEDULE_ROUTE)
@@ -200,12 +202,23 @@ object TeamParser {
                     out.add(
                         Appointment(
                             o.str("date"), oppId, oppName, isHome, result, o.str("meeting_id"), o.str("league_id"), ownName,
+                            live = isLive(o),
                         ),
                     )
                 }
             }
         }
         return out.sortedBy { it.date }
+    }
+
+    /**
+     * Laufendes Spiel: Feld `live` oder `status` aus dem Spielplan. Format nicht am echten Konto geprüft,
+     * daher tolerant: "0", "false", "no" und fehlende Werte zählen als nicht laufend.
+     */
+    private fun isLive(o: JsonObject): Boolean {
+        val live = o.str("live")?.lowercase()
+        if (live != null) return live !in setOf("0", "false", "no")
+        return o.str("status")?.lowercase() == "live"
     }
 
     fun parsePlayers(body: String): List<TeamMember>? =

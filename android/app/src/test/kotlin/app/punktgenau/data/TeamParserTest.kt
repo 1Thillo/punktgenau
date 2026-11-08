@@ -44,6 +44,16 @@ class TeamParserTest {
         assertEquals(listOf("DJK Mayen III", "DJK Mayen III"), list.map { it.opponentName })
     }
 
+    @Test fun spielplan_laufendesSpielAusLiveFeld() {
+        val body = """{"data":{"meetings_excerpt":{"meetings":[
+            {"2026-11-12":[{"date":"2026-11-12T19:00:00.000+00:00","team_home":"A","team_away":"B","team_home_id":"1","team_away_id":"2","live":"1"}]},
+            {"2026-11-12":[{"date":"2026-11-12T19:00:00.000+00:00","team_home":"A","team_away":"C","team_home_id":"1","team_away_id":"3","live":"0"}]},
+            {"2026-11-19":[{"date":"2026-11-19T19:00:00.000+00:00","team_home":"A","team_away":"D","team_home_id":"1","team_away_id":"4","status":"live"}]},
+            {"2026-11-26":[{"date":"2026-11-26T19:00:00.000+00:00","team_home":"A","team_away":"E","team_home_id":"1","team_away_id":"5"}]}]}}}"""
+        val list = TeamParser.parseSchedule(body, "1")!!
+        assertEquals(listOf(true, false, true, false), list.map { it.live })
+    }
+
     @Test fun spielplan_fremdesSpielWirdIgnoriert() {
         val body = """{"data":{"meetings_excerpt":{"meetings":[{"2026-10-29":[{"date":"x","team_home":"A","team_away":"B","team_home_id":"5","team_away_id":"6"}]}]}}}"""
         assertEquals(0, TeamParser.parseSchedule(body, "1")!!.size)

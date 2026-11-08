@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -28,11 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.punktgenau.data.LIVE_INTERVAL_MS
 import app.punktgenau.data.Result
 import app.punktgenau.data.Season
 import app.punktgenau.data.Spieltag
 import app.punktgenau.data.SpieltagMatch
 import app.punktgenau.data.SpieltagRepository
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -50,7 +53,20 @@ fun SpieltagScreen(
     var failed by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var index by remember { mutableIntStateOf(-1) }
+    var liveTick by remember { mutableIntStateOf(0) }
     BackHandler(onBack = onClose)
+
+    // Laufende Spiele alle paar Sekunden neu laden. Die Schleife endet mit dem Bildschirm (Coroutine-Abbruch).
+    LaunchedEffect(liveTick, reload, matches != null) {
+        val current = matches ?: return@LaunchedEffect
+        if (current.none { it.appointment.live }) return@LaunchedEffect
+        delay(LIVE_INTERVAL_MS)
+        val r = repo.refreshLive(current)
+        if (r is Result.Ok) {
+            matches = r.value
+            liveTick++
+        }
+    }
 
     LaunchedEffect(reload) {
         matches = null
@@ -141,6 +157,10 @@ private fun MatchCard(match: SpieltagMatch, onOpenReport: (String, String) -> Un
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
+            if (match.appointment.live) {
+                Text("LIVE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+            }
             Text(match.appointment.result ?: "–", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))

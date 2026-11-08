@@ -50,4 +50,31 @@ class SpieltagRepository(
         }
         return Result.Ok(out)
     }
+
+    /**
+     * Lädt nur die Spielpläne der Mannschaften neu, die gerade ein laufendes Spiel haben (am Cache vorbei).
+     * Die übrigen Spiele bleiben unverändert und in ihrer Reihenfolge.
+     */
+    suspend fun refreshLive(current: List<SpieltagMatch>): Result<List<SpieltagMatch>> {
+        val liveTeams = current.filter { it.appointment.live }.map { it.team.id }.toSet()
+        if (liveTeams.isEmpty()) return Result.Ok(current)
+        val fresh = HashMap<String, List<SpieltagMatch>>()
+        for (team in current.map { it.team }.distinctBy { it.id }.filter { it.id in liveTeams }) {
+            when (val s = teams.schedule(team, ScheduleFilter.ALL, fresh = true)) {
+                is Result.Ok -> fresh[team.id] = s.value.map { SpieltagMatch(team, it) }
+                Result.NeedsLogin -> return Result.NeedsLogin
+                is Result.Failed -> return s
+            }
+        }
+        val out = ArrayList<SpieltagMatch>()
+        val placed = HashSet<String>()
+        for (m in current) {
+            if (m.team.id !in liveTeams) out.add(m)
+            else if (placed.add(m.team.id)) out.addAll(fresh[m.team.id].orEmpty())
+        }
+        return Result.Ok(out)
+    }
 }
+
+/** Abstand der Aktualisierung laufender Spiele in Millisekunden (nur solange der Spieltag offen ist). */
+const val LIVE_INTERVAL_MS = 45_000L
