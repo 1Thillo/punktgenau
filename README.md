@@ -61,7 +61,7 @@ android/app/src/main/kotlin/app/punktgenau/
 
 ## Bekannte Grenzen
 - Die Feldnamen der Website-Antworten sind nur am eigenen Konto geprüft. Ändert die Website ihr Format, zeigt die App eine "nicht lesbar"-Meldung.
-- Spieltag und Spielbericht laden beim Öffnen bzw. über "Aktualisieren". Live-Stände gibt es noch nicht.
+- Spieltag und Spielbericht laden beim Öffnen bzw. über "Aktualisieren". Laufende Spiele werden solange der Bildschirm offen ist alle 45 Sekunden neu geladen. Die Aktualisierung ist noch nicht an einem echten laufenden Spiel bestätigt.
 - Releases stehen unter den GitHub-Releases bereit, signiert mit dem Release-Schlüssel des Projekts. Debug-Builds gibt es aus dem Quellcode.
 - mySpieltag (Premium) ist nicht umgesetzt.
 
