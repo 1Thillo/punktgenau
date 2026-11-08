@@ -30,14 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import app.punktgenau.data.GameLine
 import app.punktgenau.data.Result
+import app.punktgenau.data.SpielberichtReport
 import app.punktgenau.data.SpielberichtRepository
 
 /** Spielbericht in der App: Einzel mit Namen und Ergebnis; der Browser bleibt als Ausweg. */
 @Composable
 fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String, onClose: () -> Unit) {
-    var state by remember { mutableStateOf<Result<List<GameLine>>?>(null) }
+    var state by remember { mutableStateOf<Result<SpielberichtReport>?>(null) }
     val context = LocalContext.current
     BackHandler(onBack = onClose)
     LaunchedEffect(url) { state = repo.load(url) }
@@ -57,7 +57,7 @@ fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String,
             Result.NeedsLogin -> InfoText("Bitte zuerst anmelden.")
             is Result.Failed -> InfoText(s.message)
             is Result.Ok -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(s.value) { g ->
+                items(s.value.games) { g ->
                     AppCard {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(g.rank, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(56.dp))
@@ -75,6 +75,20 @@ fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String,
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(g.sets, fontWeight = FontWeight.Bold)
                                 Text(g.total, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                s.value.totals?.let { t ->
+                    item {
+                        AppCard {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Gesamt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("Sätze ${t.sets}", fontWeight = FontWeight.Bold)
+                                    Text("Spiele ${t.total}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    t.balls?.let { Text("Bälle $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
                             }
                         }
                     }

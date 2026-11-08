@@ -34,6 +34,25 @@ class SpielberichtParserTest {
     }
 
     @Test
+    fun summenzeileMitBaellenSaetzenUndSpielen() {
+        val footer = """
+            <table><tbody>
+            <tr><td>4-4</td><td>Frank Große</td><td>Torsten Daun</td><td>3:0</td><td></td><td></td><td></td><td></td><td>3:0</td><td>4:6</td></tr>
+            <tr><td colspan="3"></td><td colspan="5">Bälle 358:366</td><td>18:21</td><td>4:6</td></tr>
+            </tbody></table>
+        """.trimIndent()
+        val t = SpielberichtParser.totals(footer)!!
+        assertEquals("358:366", t.balls)
+        assertEquals("18:21", t.sets)
+        assertEquals("4:6", t.total)
+    }
+
+    @Test
+    fun ohneSummenzeileNull() {
+        assertEquals(null, SpielberichtParser.totals(html))
+    }
+
+    @Test
     fun headerRowIsSkipped() {
         val header = "<tr><th>Rang</th><th>Heim</th><th>Gast</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th><th>Sätze</th><th>Gesamt</th></tr>"
         assertEquals(0, SpielberichtParser.games(header).size)
