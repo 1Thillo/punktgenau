@@ -31,8 +31,9 @@ class SpielberichtRepository(private val session: SessionManager) {
     /** Ein Bericht ändert sich nach dem Spiel kaum; so wird er nicht bei jedem Öffnen neu geholt. */
     private val cache = TtlCache<String, SpielberichtReport>(30 * 60 * 1000L)
 
-    suspend fun load(url: String): Result<SpielberichtReport> = try {
-        cache.get(url)?.let { return Result.Ok(it) }
+    /** [fresh] umgeht den Zwischenspeicher (für laufende Spiele). */
+    suspend fun load(url: String, fresh: Boolean = false): Result<SpielberichtReport> = try {
+        if (!fresh) cache.get(url)?.let { return Result.Ok(it) }
         val r = session.fetch(Request.Builder().url(url).build())
         if (r.body.contains("/verify") || r.body.contains("Verifizierung")) {
             Result.Failed("Die Website verlangt eine Bestätigung. Den Bericht kannst du im Browser öffnen.")

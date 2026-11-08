@@ -22,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,9 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.punktgenau.data.LIVE_INTERVAL_MS
 import app.punktgenau.data.Result
 import app.punktgenau.data.SpielberichtReport
 import app.punktgenau.data.SpielberichtRepository
+import kotlinx.coroutines.delay
 
 /** Eine Summe: kleine Beschriftung oben, das Ergebnis darunter. */
 @Composable
@@ -45,11 +48,21 @@ private fun TotalCell(label: String, value: String) {
 
 /** Spielbericht in der App: Einzel mit Namen und Ergebnis; der Browser bleibt als Ausweg. */
 @Composable
-fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String, onClose: () -> Unit) {
+fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String, live: Boolean, onClose: () -> Unit) {
     var state by remember { mutableStateOf<Result<SpielberichtReport>?>(null) }
+    var liveTick by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     BackHandler(onBack = onClose)
-    LaunchedEffect(url) { state = repo.load(url) }
+    LaunchedEffect(url) { state = repo.load(url, fresh = live) }
+
+    // Laufendes Spiel: Bericht alle paar Sekunden neu holen, bis der Bildschirm verlassen wird.
+    LaunchedEffect(liveTick, live) {
+        if (!live) return@LaunchedEffect
+        delay(LIVE_INTERVAL_MS)
+        val r = repo.load(url, fresh = true)
+        if (r is Result.Ok) state = r
+        liveTick++
+    }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }

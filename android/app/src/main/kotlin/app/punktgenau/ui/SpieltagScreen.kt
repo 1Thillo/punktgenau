@@ -47,7 +47,7 @@ fun SpieltagScreen(
     onClose: () -> Unit,
     onNeedsLogin: () -> Unit,
     onOpenFollow: () -> Unit,
-    onOpenReport: (String, String) -> Unit,
+    onOpenReport: (String, String, Boolean) -> Unit,
 ) {
     var matches by remember { mutableStateOf<List<SpieltagMatch>?>(null) }
     var failed by remember { mutableStateOf<String?>(null) }
@@ -130,7 +130,7 @@ fun SpieltagScreen(
 }
 
 @Composable
-private fun MatchCard(match: SpieltagMatch, onOpenReport: (String, String) -> Unit) {
+private fun MatchCard(match: SpieltagMatch, onOpenReport: (String, String, Boolean) -> Unit) {
     val report = match.appointment.let { a ->
         val meeting = a.meetingId
         val league = a.leagueId
@@ -169,7 +169,7 @@ private fun MatchCard(match: SpieltagMatch, onOpenReport: (String, String) -> Un
         if (report != null) {
             Spacer(Modifier.height(6.dp))
             OutlinedButton(
-                { onOpenReport(report, "$homeName gegen $awayName") },
+                { onOpenReport(report, "$homeName gegen $awayName", match.appointment.live) },
                 Modifier.fillMaxWidth(),
             ) { Text("Spielbericht öffnen") }
         }

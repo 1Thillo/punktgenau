@@ -85,7 +85,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     var showTransfers by remember { mutableStateOf(false) }
     var showSpieltag by remember { mutableStateOf(false) }
     var showFollow by remember { mutableStateOf(false) }
-    var report by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var report by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
     var viewPlayer by remember { mutableStateOf<PlayerHit?>(null) }
     var openLeague by remember { mutableStateOf<app.punktgenau.data.GroupRef?>(null) }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
@@ -151,8 +151,8 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         return
     }
 
-    report?.let { (url, title) ->
-        SpielberichtScreen(app.spielbericht, url = url, title = title, onClose = { report = null })
+    report?.let { (url, title, live) ->
+        SpielberichtScreen(app.spielbericht, url = url, title = title, live = live, onClose = { report = null })
         return
     }
 
@@ -167,7 +167,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
             onClose = { showSpieltag = false },
             onNeedsLogin = { showSpieltag = false; ui = StartUi.LoggedOut; tab = Tab.START },
             onOpenFollow = { showFollow = true },
-            onOpenReport = { url, title -> report = url to title },
+            onOpenReport = { url, title, live -> report = Triple(url, title, live) },
         )
         return
     }
