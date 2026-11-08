@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,20 +29,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.punktgenau.data.Result
+import app.punktgenau.data.Season
 import app.punktgenau.data.Spieltag
 import app.punktgenau.data.SpieltagMatch
-import app.punktgenau.data.Season
 import app.punktgenau.data.SpieltagRepository
-import app.punktgenau.data.TeamAverage
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/**
- * Spieltag-Übersicht: die Spiele der eigenen Mannschaften, Tag für Tag, mit der Ø-TTR beider Mannschaften.
- * Die Ø-TTR kommt bei offenen Spielen aus der Meldeliste der Mannschaft (alle gemeldeten Spieler, da die
- * Aufstellung nicht bekannt ist), bei gespielten aus den Spielern des Spielberichts zum Spieltag.
- */
+/** Spieltag-Übersicht: die Spiele der eigenen und gemerkten Mannschaften, Tag für Tag. */
 @Composable
 fun SpieltagScreen(
     repo: SpieltagRepository,
@@ -56,7 +50,6 @@ fun SpieltagScreen(
     var failed by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var index by remember { mutableIntStateOf(-1) }
-    val averages = remember { mutableStateMapOf<String, TeamAverage?>() }
     BackHandler(onBack = onClose)
 
     LaunchedEffect(reload) {
@@ -76,33 +69,11 @@ fun SpieltagScreen(
     val days = Spieltag.days(list)
     val day = days.getOrNull(index)
     val dayMatches = list.filter { it.day == day }
-    val teamIds = dayMatches.flatMap { listOf(it.team.id, it.appointment.opponentTeamId) }.distinct()
-
-    // Ø-TTR nur für Mannschaften laden, die an diesem Tag spielen und noch nicht bekannt sind.
-    LaunchedEffect(teamIds) {
-        for (id in teamIds) {
-            if (averages.containsKey(id)) continue
-            averages[id] = (repo.teamAverage(id) as? Result.Ok)?.value
-        }
-    }
-
-    // Gespielte Spiele: Ø aus den Spielern des Spielberichts zum Spieltag, je Seite.
-    LaunchedEffect(dayMatches.map { it.appointment.meetingId to it.appointment.result }) {
-        for (m in dayMatches) {
-            val meeting = m.appointment.meetingId ?: continue
-            if (m.appointment.result == null) continue
-            val key = "m:$meeting"
-            if (averages.containsKey("$key:own")) continue
-            val la = (repo.lineup(m) as? Result.Ok)?.value
-            averages["$key:own"] = la?.own
-            averages["$key:opp"] = la?.opponent
-        }
-    }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }
         ScreenTitle("Spieltag")
-        InfoText("Spiele deiner Mannschaften und der gemerkten. Ø-TTR: offene Spiele aus allen gemeldeten Spielern (TTR, sonst Q-TTR), gespielte aus den Spielern des Berichts zum Spieltag.")
+        InfoText("Spiele deiner Mannschaften und der gemerkten.")
         OutlinedButton(onOpenFollow, Modifier.fillMaxWidth()) { Text("Mannschaften merken") }
         Spacer(Modifier.height(8.dp))
         val f = failed
@@ -132,7 +103,7 @@ fun SpieltagScreen(
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dayMatches.isEmpty()) item { InfoText("Keine Spiele an diesem Tag.") }
-                items(dayMatches) { match -> MatchCard(match, averages, onOpenReport) }
+                items(dayMatches) { match -> MatchCard(match, onOpenReport) }
                 item {
                     OutlinedButton({ reload++ }, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
                     Spacer(Modifier.height(16.dp))
@@ -143,7 +114,7 @@ fun SpieltagScreen(
 }
 
 @Composable
-private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>, onOpenReport: (String, String) -> Unit) {
+private fun MatchCard(match: SpieltagMatch, onOpenReport: (String, String) -> Unit) {
     val report = match.appointment.let { a ->
         val meeting = a.meetingId
         val league = a.leagueId
@@ -157,13 +128,6 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>,
     val ownId = match.team.id
     val oppId = match.appointment.opponentTeamId
     val homeId = if (home) ownId else oppId
-    val awayId = if (home) oppId else ownId
-    // Gespielte Spiele zeigen die Ø der Spieler im Bericht, sonst die Meldeliste der Mannschaft.
-    val lineupKey = match.appointment.meetingId?.takeIf { match.appointment.result != null }?.let { "m:$it" }
-    fun keyOf(side: String, teamId: String): String =
-        if (lineupKey != null && averages["$lineupKey:$side"] != null) "$lineupKey:$side" else teamId
-    val homeKey = if (home) keyOf("own", homeId) else keyOf("opp", homeId)
-    val awayKey = if (home) keyOf("opp", awayId) else keyOf("own", awayId)
     val ownLabel = match.appointment.ownName
         ?: match.team.club?.let { "$it – ${match.team.name}" }
         ?: match.team.name
@@ -180,8 +144,8 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>,
             Text(match.appointment.result ?: "–", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))
-        TeamLine(homeName, averageText(averages, homeKey), bold = homeId == ownId)
-        TeamLine(awayName, averageText(averages, awayKey), bold = awayId == ownId)
+        TeamLine(homeName, bold = homeId == ownId)
+        TeamLine(awayName, bold = (if (home) oppId else ownId) == ownId)
         if (report != null) {
             Spacer(Modifier.height(6.dp))
             OutlinedButton(
@@ -193,22 +157,12 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>,
 }
 
 @Composable
-private fun TeamLine(name: String, average: String, bold: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            name,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.weight(1f),
-        )
-        Text(average, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-private fun averageText(averages: Map<String, TeamAverage?>, id: String): String {
-    if (!averages.containsKey(id)) return "Ø lädt …"
-    val a = averages[id] ?: return "Ø –"
-    return "Ø ${a.value}" + (if (a.isTtr) "" else " (Q-TTR)") + " aus ${a.count}" + (if (a.lineup) " (gespielt)" else "")
+private fun TeamLine(name: String, bold: Boolean) {
+    Text(
+        name,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+    )
 }
 
 private fun fmtDay(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern("EEEE, dd.MM.yyyy", Locale.GERMAN))

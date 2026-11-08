@@ -11,7 +11,7 @@ Die App ist ein privates Projekt und **nicht mit mytischtennis.de verbunden**. S
 - Spielersuche, auch erweitert nach Geschlecht, TTR-Bereich und Verein.
 - Liga: Tabelle, Spielplan, Bilanz, Aufstellung und TTR-Rangliste.
 - Verein: Kontakt, Spiellokale mit Navigation, Mannschaften.
-- Spieltag: Spiele der eigenen und gemerkten Mannschaften, mit Ø-TTR je Seite.
+- Spieltag: Spiele der eigenen und gemerkten Mannschaften, mit Spielbericht.
 - Spielbericht in der App, mit Einzeln, Sätzen und Summen.
 - Wechselliste.
 
@@ -61,7 +61,6 @@ android/app/src/main/kotlin/app/punktgenau/
 
 ## Bekannte Grenzen
 - Die Feldnamen der Website-Antworten sind nur am eigenen Konto geprüft. Ändert die Website ihr Format, zeigt die App eine "nicht lesbar"-Meldung.
-- Der Ø-TTR im Spieltag ist eine Näherung. Offene Spiele nehmen alle gemeldeten Spieler, gespielte die Einzelspieler des Berichts. Doppel fließen nicht ein.
 - Spieltag und Spielbericht laden beim Öffnen bzw. über "Aktualisieren". Live-Stände gibt es noch nicht.
 - Es gibt nur einen Debug-Build, ohne Release-Schlüssel.
 - mySpieltag (Premium) ist nicht umgesetzt.

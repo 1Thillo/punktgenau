@@ -41,33 +41,6 @@ class SpieltagTest {
     }
 
     @Test
-    fun topAverageUsesTheFourHighestRounded() {
-        // 1700, 1650, 1600, 1550 -> 1625; die 1400 bleibt außen vor.
-        assertEquals(1625, Spieltag.topAverage(listOf(1400, 1550, 1700, 1600, 1650)))
-    }
-
-    @Test
-    fun topAverageWithFewerThanFourValues() {
-        assertEquals(1601, Spieltag.topAverage(listOf(1600, 1602)))
-    }
-
-    @Test
-    fun topAverageIsNullWithoutValues() {
-        assertNull(Spieltag.topAverage(emptyList()))
-    }
-
-    @Test
-    fun lineupNamesNimmtDieEigeneSeiteOhneDoppelungen() {
-        val games = listOf(
-            GameLine("D1-D1", listOf("Moritz Bernd", "Frank Große"), listOf("Achim Jakoby", "Torsten Daun"), "0:3", "0 : 1", emptyList()),
-            GameLine("1-2", listOf("Peter Leonard"), listOf("Wolfgang Hoff"), "3:1", "1 : 2", emptyList()),
-            GameLine("4-4", listOf("Frank Große"), listOf("Torsten Daun"), "3:0", "4 : 6", emptyList()),
-        )
-        assertEquals(listOf("Peter Leonard", "Frank Große"), Spieltag.lineupNames(games, ownHome = true))
-        assertEquals(listOf("Wolfgang Hoff", "Torsten Daun"), Spieltag.lineupNames(games, ownHome = false))
-    }
-
-    @Test
     fun reportUrlUsesSeasonWithDoubleDashAndBothIds() {
         assertEquals(
             "https://www.mytischtennis.de/click-tt/RTTVR/26--27/ligen/x/gruppe/518414/spielbericht/15898549/x",
