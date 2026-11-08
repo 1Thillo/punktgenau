@@ -34,6 +34,15 @@ import app.punktgenau.data.Result
 import app.punktgenau.data.SpielberichtReport
 import app.punktgenau.data.SpielberichtRepository
 
+/** Eine Summe: kleine Beschriftung oben, das Ergebnis darunter. */
+@Composable
+private fun TotalCell(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
 /** Spielbericht in der App: Einzel mit Namen und Ergebnis; der Browser bleibt als Ausweg. */
 @Composable
 fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String, onClose: () -> Unit) {
@@ -82,13 +91,10 @@ fun SpielberichtScreen(repo: SpielberichtRepository, url: String, title: String,
                 s.value.totals?.let { t ->
                     item {
                         AppCard {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Gesamt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text("Sätze ${t.sets}", fontWeight = FontWeight.Bold)
-                                    Text("Spiele ${t.total}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    t.balls?.let { Text("Bälle $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                t.balls?.let { TotalCell("Bälle", it) }
+                                TotalCell("Sätze", t.sets)
+                                TotalCell("Spiele", t.total)
                             }
                         }
                     }
