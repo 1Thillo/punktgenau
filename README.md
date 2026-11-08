@@ -65,5 +65,18 @@ android/app/src/main/kotlin/app/punktgenau/
 - Releases stehen unter den GitHub-Releases bereit, signiert mit dem Release-Schlüssel des Projekts. Debug-Builds gibt es aus dem Quellcode.
 - mySpieltag (Premium) ist nicht umgesetzt.
 
+## Versionierung und Changelog
+Die App folgt [Semantic Versioning](https://semver.org/lang/de/) (`MAJOR.MINOR.PATCH`). Solange die Version mit `0.` beginnt, kann sich die Oberfläche zwischen Minor-Versionen ändern.
+
+- Commits folgen [Conventional Commits](https://www.conventionalcommits.org/de/) (`feat:`, `fix:`, `docs:`, `ci:`, `refactor:`, `chore:`).
+- Daraus leitet release-please die nächste Version und die Einträge in [CHANGELOG.md](CHANGELOG.md) ab: `feat` erhöht die MINOR-Version, `fix` die PATCH-Version, eine Breaking Change die MAJOR-Version.
+- Die Release-PR bestätigt man per Merge. Danach baut der Workflow die signierte APK und hängt sie an das GitHub-Release.
+
+## Logs
+- App-Logs laufen über den Android-Logcat. Tags folgen dem Schema `PG/<Bereich>`, zum Beispiel `PG/Spieltag` oder `PG/Spielbericht`. Stufen: `d` für Debugging, `i` für Ablauf, `w` für Auffälliges, `e` für Fehler.
+- Nicht loggen: Passwörter, Cookies, Sitzungsdaten und ganze Antworten der Website.
+- Die App sendet keine Logs oder Absturzberichte nach außen.
+- Logs der Build- und Release-Läufe stehen bei GitHub Actions.
+
 ## Lizenz
 MIT, siehe [LICENSE](LICENSE).

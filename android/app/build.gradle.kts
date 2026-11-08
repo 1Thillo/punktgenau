@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Version: wird von release-please gesetzt (Marker nicht entfernen).
+val appVersionName = "0.1.0" // x-release-please-version
+val appVersionCode = appVersionName.split(".").let { (major, minor, patch) ->
+    major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt()
+}
+
 android {
     namespace = "app.punktgenau"
     compileSdk = 37
@@ -13,8 +19,9 @@ android {
         applicationId = "app.punktgenau"
         minSdk = 31
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionName = appVersionName
+        // Aus MAJOR.MINOR.PATCH abgeleitet: streng steigend, solange die Version steigt (z. B. 0.1.0 -> 100, 1.2.3 -> 10203).
+        versionCode = appVersionCode
     }
 
     // Release-Signierung nur, wenn RELEASE_KEYSTORE_PATH gesetzt ist (CI bzw. lokaler Release-Build).
