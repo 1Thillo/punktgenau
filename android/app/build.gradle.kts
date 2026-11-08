@@ -17,9 +17,26 @@ android {
         versionName = "0.1.0"
     }
 
+    // Release-Signierung nur, wenn RELEASE_KEYSTORE_PATH gesetzt ist (CI bzw. lokaler Release-Build).
+    // Ohne Variable bleibt der Release-Build unsigniert, Debug-Builds sind davon nicht betroffen.
+    val releaseSigning = System.getenv("RELEASE_KEYSTORE_PATH") != null
+    signingConfigs {
+        if (releaseSigning) {
+            create("release") {
+                storeFile = file(System.getenv("RELEASE_KEYSTORE_PATH"))
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
