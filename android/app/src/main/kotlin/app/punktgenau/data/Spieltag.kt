@@ -1,6 +1,7 @@
 package app.punktgenau.data
 
 import app.punktgenau.data.Result
+import app.punktgenau.data.SearchOutcome
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -33,9 +34,11 @@ object Spieltag {
     fun reportUrl(org: String, season: String, leagueId: String, meetingId: String): String =
         "https://www.mytischtennis.de/click-tt/$org/${season.replace("/", "--")}/ligen/x/gruppe/$leagueId/spielbericht/$meetingId/x"
 
-    /** Namen der eigenen Seite (Heim oder Gast) aus allen Einzeln und Doppeln eines Spielberichts, ohne Doppelungen. */
+    /** Namen der eigenen Seite (Heim oder Gast) aus den Einzeln eines Spielberichts; Doppel bleiben außen vor. */
     fun lineupNames(games: List<GameLine>, ownHome: Boolean): List<String> =
-        games.flatMap { if (ownHome) it.home else it.away }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        games.filter { it.home.size == 1 && it.away.size == 1 }
+            .map { if (ownHome) it.home.single() else it.away.single() }
+            .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 
     /** Mittelwert der [n] höchsten Werte, auf ganze Punkte gerundet. Leer → null. */
     fun topAverage(values: List<Int>, n: Int = 4): Int? {
@@ -115,8 +118,8 @@ class SpieltagRepository(
             is Result.Failed -> return Result.Ok(null)
         }
         val home = a.home == true
-        val own = sideAverage(Spieltag.lineupNames(rep.games, home), match.team.id, day)
-        val opp = sideAverage(Spieltag.lineupNames(rep.games, !home), a.opponentTeamId, day)
+        val own = sideAverage(Spieltag.lineupNames(rep.games, home), match.team.id, a.ownName.orEmpty(), day)
+        val opp = sideAverage(Spieltag.lineupNames(rep.games, !home), a.opponentTeamId, a.opponentName, day)
         return when {
             own is Result.NeedsLogin || opp is Result.NeedsLogin -> Result.NeedsLogin
             else -> Result.Ok(
@@ -128,20 +131,40 @@ class SpieltagRepository(
         }
     }
 
-    /** Ø einer Seite: Namen des Berichts auf die Meldeliste abbilden, dann die Werte zum Spieltag. */
-    private suspend fun sideAverage(names: List<String>, teamId: String, day: LocalDate): Result<TeamAverage?> {
+    /**
+     * Ø einer Seite aus den Einzelspielern des Berichts. Wer in der Meldeliste der Mannschaft steht, wird dort
+     * gefunden; sonst (Aushilfe aus einer anderen Mannschaft des Vereins) über die Spielersuche, mit Verein
+     * [fullName] ("Verein Mannschaft") als Prüfung.
+     */
+    private suspend fun sideAverage(names: List<String>, teamId: String, fullName: String, day: LocalDate): Result<TeamAverage?> {
         val members = when (val p = teams.players(teamId)) {
             is Result.Ok -> p.value
             Result.NeedsLogin -> return Result.NeedsLogin
-            is Result.Failed -> return Result.Ok(null)
+            is Result.Failed -> emptyList()
         }
-        val nuIds = names.mapNotNull { n ->
-            members.firstOrNull { it.displayName.equals(n, ignoreCase = true) }?.nuId
-        }.distinct()
-        if (nuIds.isEmpty()) return Result.Ok(null)
+        val nuIds = mutableListOf<String>()
+        for (n in names) {
+            val member = members.firstOrNull { it.displayName.equals(n, ignoreCase = true) }?.nuId
+            if (member != null) {
+                nuIds += member
+                continue
+            }
+            when (val s = players.search(n)) {
+                is SearchOutcome.Hits -> s.players
+                    .firstOrNull { h ->
+                        "${h.firstName} ${h.lastName}".equals(n, ignoreCase = true) &&
+                            h.club != null && fullName.startsWith(h.club) && h.nuId != null
+                    }
+                    ?.nuId?.let { nuIds += it }
+                SearchOutcome.NeedsLogin -> return Result.NeedsLogin
+                is SearchOutcome.Failed -> Unit
+            }
+        }
+        val ids = nuIds.distinct()
+        if (ids.isEmpty()) return Result.Ok(null)
         val gate = Semaphore(5)
         val outcomes = coroutineScope {
-            nuIds.map { nu -> async { gate.withPermit { players.ratings(nu, day) } } }.awaitAll()
+            ids.map { nu -> async { gate.withPermit { players.ratings(nu, day) } } }.awaitAll()
         }
         if (outcomes.any { it == RatingOutcome.NeedsLogin }) return Result.NeedsLogin
         val values = outcomes.filterIsInstance<RatingOutcome.Values>().mapNotNull { v ->

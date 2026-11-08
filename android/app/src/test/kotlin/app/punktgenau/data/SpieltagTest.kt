@@ -63,8 +63,8 @@ class SpieltagTest {
             GameLine("1-2", listOf("Peter Leonard"), listOf("Wolfgang Hoff"), "3:1", "1 : 2", emptyList()),
             GameLine("4-4", listOf("Frank Große"), listOf("Torsten Daun"), "3:0", "4 : 6", emptyList()),
         )
-        assertEquals(listOf("Moritz Bernd", "Frank Große", "Peter Leonard"), Spieltag.lineupNames(games, ownHome = true))
-        assertEquals(listOf("Achim Jakoby", "Torsten Daun", "Wolfgang Hoff"), Spieltag.lineupNames(games, ownHome = false))
+        assertEquals(listOf("Peter Leonard", "Frank Große"), Spieltag.lineupNames(games, ownHome = true))
+        assertEquals(listOf("Wolfgang Hoff", "Torsten Daun"), Spieltag.lineupNames(games, ownHome = false))
     }
 
     @Test
