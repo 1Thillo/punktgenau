@@ -15,7 +15,7 @@ data class SpieltagMatch(val team: TeamInfo, val appointment: Appointment) {
 }
 
 /** Mittelwert der stärksten Spieler einer Meldeliste; [isTtr] ist false, wenn ein Q-TTR-Wert dabei ist. */
-data class TeamAverage(val value: Int, val count: Int, val isTtr: Boolean)
+data class TeamAverage(val value: Int, val count: Int, val isTtr: Boolean, val lineup: Boolean = false)
 
 /** Reine Hilfen für die Spieltag-Übersicht; ohne Netz testbar. */
 object Spieltag {
@@ -33,6 +33,10 @@ object Spieltag {
     fun reportUrl(org: String, season: String, leagueId: String, meetingId: String): String =
         "https://www.mytischtennis.de/click-tt/$org/${season.replace("/", "--")}/ligen/x/gruppe/$leagueId/spielbericht/$meetingId/x"
 
+    /** Namen der eigenen Seite (Heim oder Gast) aus allen Einzeln und Doppeln eines Spielberichts, ohne Doppelungen. */
+    fun lineupNames(games: List<GameLine>, ownHome: Boolean): List<String> =
+        games.flatMap { if (ownHome) it.home else it.away }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
     /** Mittelwert der [n] höchsten Werte, auf ganze Punkte gerundet. Leer → null. */
     fun topAverage(values: List<Int>, n: Int = 4): Int? {
         val top = values.sortedDescending().take(n)
@@ -45,10 +49,14 @@ object Spieltag {
  * Spieltag-Übersicht: Spiele der eigenen Mannschaften (öffentlicher Spielplan) und die Ø-TTR je Mannschaft
  * aus ihrer Meldeliste (öffentliche TTR-Werte; Abruf nur mit Anmeldung).
  */
+/** Ø-TTR beider Seiten eines gespielten Spiels aus dem Spielbericht (Spieltagswerte der Spieler, die gespielt haben). */
+data class LineupAverages(val own: TeamAverage?, val opponent: TeamAverage?)
+
 class SpieltagRepository(
     private val teams: TeamRepository,
     private val players: PlayerRepository,
     private val follow: FollowStore,
+    private val report: SpielberichtRepository,
 ) {
 
     /** Alle Spiele der eigenen und der gemerkten Mannschaften der laufenden Saison. */
@@ -86,9 +94,71 @@ class SpieltagRepository(
         if (outcomes.any { it == RatingOutcome.NeedsLogin }) return Result.NeedsLogin
         val values = outcomes.filterIsInstance<RatingOutcome.Values>()
             .mapNotNull { v -> (v.ttr ?: v.qttr)?.let { it to (v.ttr != null) } }
-        val top = values.sortedByDescending { it.first }.take(4)
-        if (top.isEmpty()) return Result.Ok(null)
-        val avg = Spieltag.topAverage(top.map { it.first }) ?: return Result.Ok(null)
-        return Result.Ok(TeamAverage(avg, top.size, top.all { it.second }))
+        return Result.Ok(average(values))
+    }
+
+    /**
+     * Ø-TTR eines gespielten Spiels aus dem Spielbericht: die Spieler, die tatsächlich gespielt haben, mit ihrem
+     * Wert zum Spieltag. Null, wenn kein Bericht oder keine Zuordnung der Namen möglich ist.
+     */
+    suspend fun lineup(match: SpieltagMatch): Result<LineupAverages?> {
+        val a = match.appointment
+        val meeting = a.meetingId
+        val league = a.leagueId
+        val day = match.day
+        if (a.result == null || meeting == null || league == null || day == null) return Result.Ok(null)
+        val org = match.team.organization ?: "RTTVR"
+        val season = match.team.season ?: Season.label(LocalDate.now())
+        val rep = when (val r = report.load(Spieltag.reportUrl(org, season, league, meeting))) {
+            is Result.Ok -> r.value
+            Result.NeedsLogin -> return Result.NeedsLogin
+            is Result.Failed -> return Result.Ok(null)
+        }
+        val home = a.home == true
+        val own = sideAverage(Spieltag.lineupNames(rep.games, home), match.team.id, day)
+        val opp = sideAverage(Spieltag.lineupNames(rep.games, !home), a.opponentTeamId, day)
+        return when {
+            own is Result.NeedsLogin || opp is Result.NeedsLogin -> Result.NeedsLogin
+            else -> Result.Ok(
+                LineupAverages(
+                    (own as? Result.Ok)?.value,
+                    (opp as? Result.Ok)?.value,
+                ),
+            )
+        }
+    }
+
+    /** Ø einer Seite: Namen des Berichts auf die Meldeliste abbilden, dann die Werte zum Spieltag. */
+    private suspend fun sideAverage(names: List<String>, teamId: String, day: LocalDate): Result<TeamAverage?> {
+        val members = when (val p = teams.players(teamId)) {
+            is Result.Ok -> p.value
+            Result.NeedsLogin -> return Result.NeedsLogin
+            is Result.Failed -> return Result.Ok(null)
+        }
+        val nuIds = names.mapNotNull { n ->
+            members.firstOrNull { it.displayName.equals(n, ignoreCase = true) }?.nuId
+        }.distinct()
+        if (nuIds.isEmpty()) return Result.Ok(null)
+        val gate = Semaphore(5)
+        val outcomes = coroutineScope {
+            nuIds.map { nu -> async { gate.withPermit { players.ratings(nu, day) } } }.awaitAll()
+        }
+        if (outcomes.any { it == RatingOutcome.NeedsLogin }) return Result.NeedsLogin
+        val values = outcomes.filterIsInstance<RatingOutcome.Values>().mapNotNull { v ->
+            when {
+                v.atDate != null -> v.atDate to true
+                v.ttr != null -> v.ttr to true
+                v.qttr != null -> v.qttr to false
+                else -> null
+            }
+        }
+        return Result.Ok(average(values)?.copy(lineup = true))
+    }
+
+    /** Mittelwert aller Werte; [values] sind Paare aus Wert und Kennzeichen "TTR". Leer → null. */
+    private fun average(values: List<Pair<Int, Boolean>>): TeamAverage? {
+        if (values.isEmpty()) return null
+        val avg = Spieltag.topAverage(values.map { it.first }, n = values.size) ?: return null
+        return TeamAverage(avg, values.size, values.all { it.second })
     }
 }

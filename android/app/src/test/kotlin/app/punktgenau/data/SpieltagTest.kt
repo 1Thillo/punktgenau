@@ -57,6 +57,17 @@ class SpieltagTest {
     }
 
     @Test
+    fun lineupNamesNimmtDieEigeneSeiteOhneDoppelungen() {
+        val games = listOf(
+            GameLine("D1-D1", listOf("Moritz Bernd", "Frank Große"), listOf("Achim Jakoby", "Torsten Daun"), "0:3", "0 : 1", emptyList()),
+            GameLine("1-2", listOf("Peter Leonard"), listOf("Wolfgang Hoff"), "3:1", "1 : 2", emptyList()),
+            GameLine("4-4", listOf("Frank Große"), listOf("Torsten Daun"), "3:0", "4 : 6", emptyList()),
+        )
+        assertEquals(listOf("Moritz Bernd", "Frank Große", "Peter Leonard"), Spieltag.lineupNames(games, ownHome = true))
+        assertEquals(listOf("Achim Jakoby", "Torsten Daun", "Wolfgang Hoff"), Spieltag.lineupNames(games, ownHome = false))
+    }
+
+    @Test
     fun reportUrlUsesSeasonWithDoubleDashAndBothIds() {
         assertEquals(
             "https://www.mytischtennis.de/click-tt/RTTVR/26--27/ligen/x/gruppe/518414/spielbericht/15898549/x",

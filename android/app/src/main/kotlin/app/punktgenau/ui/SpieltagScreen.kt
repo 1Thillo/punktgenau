@@ -41,7 +41,8 @@ import java.util.Locale
 
 /**
  * Spieltag-Übersicht: die Spiele der eigenen Mannschaften, Tag für Tag, mit der Ø-TTR beider Mannschaften.
- * Die Ø-TTR kommt aus der Meldeliste der Mannschaft; sie ist eine Näherung, keine Aufstellung.
+ * Die Ø-TTR kommt bei offenen Spielen aus der Meldeliste der Mannschaft (alle gemeldeten Spieler, da die
+ * Aufstellung nicht bekannt ist), bei gespielten aus den Spielern des Spielberichts zum Spieltag.
  */
 @Composable
 fun SpieltagScreen(
@@ -85,10 +86,23 @@ fun SpieltagScreen(
         }
     }
 
+    // Gespielte Spiele: Ø aus den Spielern des Spielberichts zum Spieltag, je Seite.
+    LaunchedEffect(dayMatches.map { it.appointment.meetingId to it.appointment.result }) {
+        for (m in dayMatches) {
+            val meeting = m.appointment.meetingId ?: continue
+            if (m.appointment.result == null) continue
+            val key = "m:$meeting"
+            if (averages.containsKey("$key:own")) continue
+            val la = (repo.lineup(m) as? Result.Ok)?.value
+            averages["$key:own"] = la?.own
+            averages["$key:opp"] = la?.opponent
+        }
+    }
+
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }
         ScreenTitle("Spieltag")
-        InfoText("Spiele deiner Mannschaften und der gemerkten. Ø-TTR: die vier höchsten Werte aus der Meldeliste (TTR, sonst Q-TTR).")
+        InfoText("Spiele deiner Mannschaften und der gemerkten. Ø-TTR: offene Spiele aus allen gemeldeten Spielern (TTR, sonst Q-TTR), gespielte aus den Spielern des Berichts zum Spieltag.")
         OutlinedButton(onOpenFollow, Modifier.fillMaxWidth()) { Text("Mannschaften merken") }
         Spacer(Modifier.height(8.dp))
         val f = failed
@@ -144,6 +158,12 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>,
     val oppId = match.appointment.opponentTeamId
     val homeId = if (home) ownId else oppId
     val awayId = if (home) oppId else ownId
+    // Gespielte Spiele zeigen die Ø der Spieler im Bericht, sonst die Meldeliste der Mannschaft.
+    val lineupKey = match.appointment.meetingId?.takeIf { match.appointment.result != null }?.let { "m:$it" }
+    fun keyOf(side: String, teamId: String): String =
+        if (lineupKey != null && averages["$lineupKey:$side"] != null) "$lineupKey:$side" else teamId
+    val homeKey = if (home) keyOf("own", homeId) else keyOf("opp", homeId)
+    val awayKey = if (home) keyOf("opp", awayId) else keyOf("own", awayId)
     val ownLabel = match.appointment.ownName
         ?: match.team.club?.let { "$it – ${match.team.name}" }
         ?: match.team.name
@@ -160,8 +180,8 @@ private fun MatchCard(match: SpieltagMatch, averages: Map<String, TeamAverage?>,
             Text(match.appointment.result ?: "–", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))
-        TeamLine(homeName, averageText(averages, homeId), bold = homeId == ownId)
-        TeamLine(awayName, averageText(averages, awayId), bold = awayId == ownId)
+        TeamLine(homeName, averageText(averages, homeKey), bold = homeId == ownId)
+        TeamLine(awayName, averageText(averages, awayKey), bold = awayId == ownId)
         if (report != null) {
             Spacer(Modifier.height(6.dp))
             OutlinedButton(
@@ -188,7 +208,7 @@ private fun TeamLine(name: String, average: String, bold: Boolean) {
 private fun averageText(averages: Map<String, TeamAverage?>, id: String): String {
     if (!averages.containsKey(id)) return "Ø lädt …"
     val a = averages[id] ?: return "Ø –"
-    return "Ø ${a.value}" + (if (a.isTtr) "" else " (Q-TTR)") + " aus ${a.count}"
+    return "Ø ${a.value}" + (if (a.isTtr) "" else " (Q-TTR)") + " aus ${a.count}" + (if (a.lineup) " (gespielt)" else "")
 }
 
 private fun fmtDay(d: LocalDate): String = d.format(DateTimeFormatter.ofPattern("EEEE, dd.MM.yyyy", Locale.GERMAN))
