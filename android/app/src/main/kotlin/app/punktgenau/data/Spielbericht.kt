@@ -28,7 +28,11 @@ data class SpielberichtReport(val games: List<GameLine>, val totals: Totals?)
 /** Spielbericht der öffentlichen click-tt-Seite (HTML); die Website kann eine Bestätigung verlangen. */
 class SpielberichtRepository(private val session: SessionManager) {
 
+    /** Ein Bericht ändert sich nach dem Spiel kaum; so wird er nicht bei jedem Öffnen neu geholt. */
+    private val cache = TtlCache<String, SpielberichtReport>(30 * 60 * 1000L)
+
     suspend fun load(url: String): Result<SpielberichtReport> = try {
+        cache.get(url)?.let { return Result.Ok(it) }
         val r = session.fetch(Request.Builder().url(url).build())
         if (r.body.contains("/verify") || r.body.contains("Verifizierung")) {
             Result.Failed("Die Website verlangt eine Bestätigung. Den Bericht kannst du im Browser öffnen.")
@@ -37,7 +41,9 @@ class SpielberichtRepository(private val session: SessionManager) {
             if (games.isEmpty()) {
                 Result.Failed("Im Spielbericht stehen keine Einzel.")
             } else {
-                Result.Ok(SpielberichtReport(games, SpielberichtParser.totals(r.body)))
+                val report = SpielberichtReport(games, SpielberichtParser.totals(r.body))
+                cache.put(url, report)
+                Result.Ok(report)
             }
         }
     } catch (e: java.io.IOException) {

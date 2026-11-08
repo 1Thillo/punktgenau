@@ -67,6 +67,8 @@ class TeamRepository(
 ) {
     private val clubNr = Regex("\"clubnr\"\\s*:\\s*\"([^\"]*)\"", RegexOption.IGNORE_CASE)
     private val fedNickname = Regex("\"fedNickname\"\\s*:\\s*\"([^\"]*)\"")
+    private val scheduleCache = TtlCache<String, List<Appointment>>(10 * 60 * 1000L)
+    private val playersCache = TtlCache<String, List<TeamMember>>(30 * 60 * 1000L)
 
     private suspend fun <T> guarded(block: suspend () -> Result<T>): Result<T> =
         try {
@@ -111,6 +113,8 @@ class TeamRepository(
         if (org == null || group == null || season == null) {
             return@guarded Result.Failed("Für diese Mannschaft fehlen Verband, Gruppe oder Saison.")
         }
+        val cacheKey = "${team.id}|$season|${filter.path}"
+        scheduleCache.get(cacheKey)?.let { return@guarded Result.Ok(it) }
         val url = baseUrl.newBuilder()
             .addPathSegments("click-tt/$org/${season.replace("/", "--")}/ligen/x/gruppe/$group/mannschaft/${team.id}/x/spielplan/${filter.path}")
             .addQueryParameter("_data", SCHEDULE_ROUTE)
@@ -119,14 +123,17 @@ class TeamRepository(
         if (AuthDetector.isUnauthenticated(r.body)) return@guarded Result.NeedsLogin
         val list = TeamParser.parseSchedule(r.body, team.id)
             ?: return@guarded Result.Failed("Der Spielplan war nicht lesbar.")
+        scheduleCache.put(cacheKey, list)
         Result.Ok(list)
     }
 
     suspend fun players(teamId: String): Result<List<TeamMember>> = guarded {
+        playersCache.get(teamId)?.let { return@guarded Result.Ok(it) }
         val url = baseUrl.newBuilder().encodedPath("/api/ttr/team/players").addQueryParameter("teamId", teamId).build()
         val r = session.fetch(Request.Builder().url(url).build())
         if (AuthDetector.isUnauthenticated(r.body)) return@guarded Result.NeedsLogin
         val list = TeamParser.parsePlayers(r.body) ?: return@guarded Result.Failed("Die Meldeliste war nicht lesbar.")
+        playersCache.put(teamId, list)
         Result.Ok(list)
     }
 }

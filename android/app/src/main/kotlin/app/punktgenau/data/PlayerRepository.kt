@@ -41,14 +41,20 @@ sealed interface RatingOutcome {
 /** Spielersuche und Werte anderer Spieler. Feldnamen noch am echten Konto zu prüfen. */
 class PlayerRepository(private val session: SessionManager, private val baseUrl: HttpUrl) {
 
+    /** Verlauf je Spieler, damit eine Spielerin oder ein Spieler nicht bei jeder Anzeige neu abgerufen wird. */
+    private val historyCache = TtlCache<String, PlayerHistory>(CACHE_MILLIS)
+    private val searchCache = TtlCache<String, List<PlayerHit>>(CACHE_MILLIS)
+
     suspend fun search(query: String): SearchOutcome {
         if (query.isBlank()) return SearchOutcome.Hits(emptyList())
+        searchCache.get(query.trim())?.let { return SearchOutcome.Hits(it) }
         return try {
             val body = FormBody.Builder().add("query", query.trim()).add("page", "1").add("pagesize", "40").build()
             val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/search/players")!!).post(body).build())
             if (AuthDetector.isUnauthenticated(r.body)) return SearchOutcome.NeedsLogin
             val hits = PlayerParser.parseSearch(r.body)
                 ?: return SearchOutcome.Failed("Die Antwort der Suche war nicht lesbar.")
+            searchCache.put(query.trim(), hits)
             SearchOutcome.Hits(hits)
         } catch (e: java.io.IOException) {
             SearchOutcome.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
@@ -70,14 +76,24 @@ class PlayerRepository(private val session: SessionManager, private val baseUrl:
     }
 
     suspend fun ratings(nuId: String, day: java.time.LocalDate? = null): RatingOutcome {
+        historyCache.get(nuId)?.let { h ->
+            return RatingOutcome.Values(h.ttr, h.qttr, day?.let { ProfileParser.ratingOn(h.events, it) })
+        }
         return try {
             val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nuId")!!).build())
             if (AuthDetector.isUnauthenticated(r.body)) return RatingOutcome.NeedsLogin
             val (ttr, q) = ProfileParser.parseHistory(r.body)
-            RatingOutcome.Values(ttr, q, day?.let { ProfileParser.ratingOn(ProfileParser.parseEvents(r.body), it) })
+            val events = ProfileParser.parseEvents(r.body)
+            historyCache.put(nuId, PlayerHistory(ttr, q, events))
+            RatingOutcome.Values(ttr, q, day?.let { ProfileParser.ratingOn(events, it) })
         } catch (e: java.io.IOException) {
             RatingOutcome.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
+    }
+
+    private companion object {
+        /** Werte ändern sich nur an Spieltagen; 30 Minuten halten die Abrufe niedrig. */
+        const val CACHE_MILLIS = 30 * 60 * 1000L
     }
 }
 
