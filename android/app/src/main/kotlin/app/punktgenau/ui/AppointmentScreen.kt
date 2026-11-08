@@ -42,7 +42,7 @@ private sealed interface Step {
     data class Lineup(val appointment: Appointment) : Step
 }
 
-/** Termin wählen und Gegner aus der Meldeliste in den Rechner übernehmen (). */
+/** Termin wählen und Gegner aus der Meldeliste in den Rechner übernehmen. */
 @Composable
 fun AppointmentScreen(
     teams: TeamRepository,

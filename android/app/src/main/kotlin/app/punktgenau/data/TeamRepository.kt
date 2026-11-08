@@ -48,7 +48,7 @@ sealed interface Result<out T> {
     data class Failed(val message: String) : Result<Nothing>
 }
 
-/** Saisonbezeichnung wie "26/27"; Wechsel zum 1. Juli (, noch am echten Konto zu prüfen). */
+/** Saisonbezeichnung wie "26/27"; Wechsel zum 1. Juli (noch am echten Konto zu prüfen). */
 object Season {
     fun label(today: LocalDate): String {
         val start = if (today.monthValue >= 7) today.year else today.year - 1
@@ -56,7 +56,7 @@ object Season {
     }
 }
 
-/** Mannschaften, Termine und Meldelisten ( und 3.4). */
+/** Mannschaften, Termine und Meldelisten. */
 private const val SCHEDULE_ROUTE =
     "routes/click-tt+/\$association+/\$season+/\$type+/(\$groupname).gruppe.\$urlid_.mannschaft.\$teamid.\$teamname+/spielplan.\$filter"
 

@@ -39,7 +39,7 @@ sealed interface Loaded {
     data class Failed(val message: String) : Loaded
 }
 
-/** Liest Startseite und TTR-Verlauf. Die Feldnamen stammen aus  und sind noch am echten Konto zu prüfen. */
+/** Liest Startseite und TTR-Verlauf. Die Feldnamen sind noch am echten Konto zu prüfen. */
 class ProfileRepository(private val session: SessionManager, private val baseUrl: HttpUrl) {
 
     suspend fun load(): Loaded {

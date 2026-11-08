@@ -9,7 +9,7 @@ class TtrCalculatorTest {
     private fun change(own: Int, k: Int, vararg games: Pair<Int, Boolean>) =
         TtrCalculator.calculate(own, games.map { Game(it.first, it.second) }, k).change
 
-    // --- Referenzbeispiele der Formel -------------------------------------------------
+    // --- Referenzbeispiele der Formel -------------------------------------------
 
     @Test fun beideVerloren_gleichStark() = assertEquals(-16, change(1500, 16, 1500 to false, 1500 to false))
     @Test fun beideVerloren_gegnerStaerker() = assertEquals(-4, change(1500, 16, 1700 to false, 1600 to false))

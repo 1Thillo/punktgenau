@@ -25,7 +25,7 @@ private data class StoredCookie(
  *
  * - Nur Hosts, die auf [hostSuffix] enden, werden angenommen oder gesendet.
  * - Löschungen (leerer Wert oder abgelaufen) der Anmelde-Cookies (Name beginnt mit `sb-`) werden
- *   ignoriert, damit eine gültige Session nicht überschrieben wird ().
+ *   ignoriert, damit eine gültige Session nicht überschrieben wird.
  * - [version] zählt jede Änderung eines Anmelde-Cookie-Werts. Damit fassen parallele Anfragen ihre
  *   Erneuerung zusammen.
  */

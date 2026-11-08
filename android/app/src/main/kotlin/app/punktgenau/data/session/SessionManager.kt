@@ -28,7 +28,7 @@ enum class SessionState {
 
 data class FetchResult(val code: Int, val finalUrl: String, val body: String)
 
-/** Erkennt "nicht angemeldet" in Antworten (). */
+/** Erkennt "nicht angemeldet" in Antworten. */
 object AuthDetector {
     private val isAuthenticatedFalse = Regex("\"isAuthenticated\"\\s*:\\s*false")
 

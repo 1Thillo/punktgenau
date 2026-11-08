@@ -38,7 +38,7 @@ sealed interface RatingOutcome {
     data class Failed(val message: String) : RatingOutcome
 }
 
-/** Spielersuche und Werte anderer Spieler (). Feldnamen noch am echten Konto zu prüfen. */
+/** Spielersuche und Werte anderer Spieler. Feldnamen noch am echten Konto zu prüfen. */
 class PlayerRepository(private val session: SessionManager, private val baseUrl: HttpUrl) {
 
     suspend fun search(query: String): SearchOutcome {
