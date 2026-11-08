@@ -17,13 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
+      # Das Runner-Image bringt das Android-SDK schon mit; hier nur die Pakete für das Projekt nachziehen.
       - name: Android-SDK-Pakete installieren
         run: |
           yes | sdkmanager --licenses >/dev/null
