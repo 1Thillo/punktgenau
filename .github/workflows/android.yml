@@ -36,7 +36,7 @@ jobs:
       - name: Debug-APK bauen
         run: ./gradlew --no-daemon :app:assembleDebug
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: punktgenau-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
