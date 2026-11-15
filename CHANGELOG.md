@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/1Thillo/punktgenau/compare/v0.2.0...v0.3.0) (2026-11-15)
+
+
+### Features
+
+* **spieltag:** Spiele als Kalendertermine (.ics) exportieren ([1cac8ee](https://github.com/1Thillo/punktgenau/commit/1cac8eea4ac70cf258903923dfbd83c97f430fc5))
+
 ## [0.2.0](https://github.com/1Thillo/punktgenau/compare/v0.1.0...v0.2.0) (2026-11-15)
 
 
