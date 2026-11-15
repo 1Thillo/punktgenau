@@ -28,7 +28,13 @@ data class Venue(val name: String, val street: String, val zip: String, val city
 data class TeamContact(val name: String?, val phone: String?, val email: String?)
 
 /** Mannschaftskontakt und die Heimspiellokale der Mannschaft (aus dem Spielplan der Mannschaft). */
-data class TeamDetails(val contact: TeamContact?, val homeVenues: List<Venue>)
+data class TeamDetails(
+    val contact: TeamContact?,
+    val homeVenues: List<Venue>,
+    /** Verein der Mannschaft (Nummer und Name) laut Mannschaftsseite. */
+    val clubNr: String? = null,
+    val clubName: String? = null,
+)
 
 data class ClubInfo(
     val name: String,
@@ -50,13 +56,20 @@ class ClubRepository(private val session: SessionManager, private val baseUrl: H
     private val infoRoute = "routes/click-tt+/\$association+/\$season+/verein.\$clubid.\$clubname+/info"
     private val teamsRoute = "routes/click-tt+/\$association+/\$season+/verein.\$clubid.\$clubname+/mannschaften"
 
+    private val cache = TtlCache<String, Club>(10 * 60 * 1000L)
+
     suspend fun load(clubNr: String, association: String, season: String): Result<Club> = try {
+        cache.get("$clubNr|$association|$season")?.let { return Result.Ok(it) }
         val base = "click-tt/$association/${season.replace("/", "--")}/verein/$clubNr/x"
         val infoBody = session.fetch(Request.Builder().url(page(base, "info", infoRoute)).build()).body
         val teamsBody = session.fetch(Request.Builder().url(page(base, "mannschaften", teamsRoute)).build()).body
         val info = ClubParser.info(infoBody)
         val teams = ClubParser.teams(teamsBody) ?: return@load Result.Failed("Die Mannschaften des Vereins waren nicht lesbar.")
-        if (info == null && teams.isEmpty()) Result.Failed("Keine Vereinsdaten gefunden.") else Result.Ok(Club(info, teams))
+        if (info == null && teams.isEmpty()) {
+            Result.Failed("Keine Vereinsdaten gefunden.")
+        } else {
+            Club(info, teams).let { cache.put("$clubNr|$association|$season", it); Result.Ok(it) }
+        }
     } catch (e: java.io.IOException) {
         Result.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
     }

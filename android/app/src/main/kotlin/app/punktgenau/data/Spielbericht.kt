@@ -14,6 +14,9 @@ data class GameLine(
     val sets: String,
     val total: String,
     val setScores: List<String>,
+    /** Spielerkennungen (nuId) in der Reihenfolge von [home] und [away]; null, wo die Seite keine nennt. */
+    val homeIds: List<String?> = emptyList(),
+    val awayIds: List<String?> = emptyList(),
 )
 
 /**
@@ -22,7 +25,7 @@ data class GameLine(
  */
 data class Totals(val balls: String?, val sets: String, val total: String)
 
-/** Spielbericht mit Einzeln und Summenzeile. */
+/** Spielbericht mit Einzeln und Summenzeile. [games] ist leer, solange nichts eingetragen ist. */
 data class SpielberichtReport(val games: List<GameLine>, val totals: Totals?)
 
 /** Spielbericht der öffentlichen click-tt-Seite (HTML); die Website kann eine Bestätigung verlangen. */
@@ -39,13 +42,10 @@ class SpielberichtRepository(private val session: SessionManager) {
             Result.Failed("Die Website verlangt eine Bestätigung. Den Bericht kannst du im Browser öffnen.")
         } else {
             val games = SpielberichtParser.games(r.body)
-            if (games.isEmpty()) {
-                Result.Failed("Im Spielbericht stehen keine Einzel.")
-            } else {
-                val report = SpielberichtReport(games, SpielberichtParser.totals(r.body))
-                cache.put(url, report)
-                Result.Ok(report)
-            }
+            val report = SpielberichtReport(games, SpielberichtParser.totals(r.body))
+            // Ein leerer Bericht (Spiel läuft oder steht noch aus) wird nicht gemerkt, damit er sich füllen kann.
+            if (games.isNotEmpty()) cache.put(url, report)
+            Result.Ok(report)
         }
     } catch (e: java.io.IOException) {
         Result.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
@@ -58,6 +58,7 @@ object SpielberichtParser {
     private val tags = Regex("<[^>]+>")
     private val spaces = Regex("\\s+")
     private val score = Regex("^\\d+:\\d+$")
+    private val player = Regex("click-tt-player-popup\\.trigger\\.(\\d+)\"[^>]*>(.*?)</a>", RegexOption.DOT_MATCHES_ALL)
 
     private fun clean(s: String): String =
         spaces.replace(tags.replace(s, " ").replace("&nbsp;", " ").replace("&amp;", "&"), " ").trim()
@@ -67,15 +68,20 @@ object SpielberichtParser {
      * fallen weg (Kopfzeilen, Leerzeilen).
      */
     fun games(html: String): List<GameLine> = row.findAll(html).mapNotNull { m ->
-        val cells = cell.findAll(m.groupValues[1]).map { clean(it.groupValues[1]) }.toList()
+        val raw = cell.findAll(m.groupValues[1]).map { it.groupValues[1] }.toList()
+        val cells = raw.map { clean(it) }
         if (cells.size < 10 || !score.matches(cells[8])) return@mapNotNull null
+        val home = names(cells[1])
+        val away = names(cells[2])
         GameLine(
             rank = cells[0],
-            home = names(cells[1]),
-            away = names(cells[2]),
+            home = home,
+            away = away,
             sets = cells[8],
-            total = cells[9],
+            total = cells[9].replace(" ", ""),
             setScores = cells.subList(3, 8).filter { score.matches(it) },
+            homeIds = ids(raw[1], home),
+            awayIds = ids(raw[2], away),
         )
     }.toList()
 
@@ -93,6 +99,12 @@ object SpielberichtParser {
             return Totals(balls, scores[scores.size - 2], scores.last())
         }
         return null
+    }
+
+    /** Kennung je Name aus den Spielerverweisen der Zelle (click-tt-Nummer, als nuId "NU…"). */
+    private fun ids(rawCell: String, names: List<String>): List<String?> {
+        val byName = player.findAll(rawCell).associate { clean(it.groupValues[2]) to "NU" + it.groupValues[1] }
+        return names.map { byName[it] }
     }
 
     private fun names(s: String): List<String> = s.split("/").map { it.trim() }.filter { it.isNotEmpty() }

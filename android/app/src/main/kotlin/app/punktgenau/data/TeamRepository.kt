@@ -34,8 +34,15 @@ data class Appointment(
     val leagueId: String? = null,
     /** Name der eigenen Mannschaft wie im Spielplan (Verein + Mannschaft), sofern vorhanden. */
     val ownName: String? = null,
-    /** Laufendes Spiel laut Spielplan (Feld `live`); nur dann lohnt sich eine Aktualisierung. */
+    /** Laufendes Spiel laut Spielplan (Feld `live`). Ohne Live-Erfassung bleibt es auch während des Spiels false. */
     val live: Boolean = false,
+    /** Zustand laut Spielplan (Feld `state`), z. B. "scheduled" oder "done". */
+    val state: String? = null,
+    /** Spielbericht vollständig erfasst (Feld `is_meeting_complete`). */
+    val complete: Boolean = false,
+    /** Vereinsnummern beider Mannschaften, sofern der Spielplan sie nennt. */
+    val ownClubNr: String? = null,
+    val opponentClubNr: String? = null,
 )
 
 /** Ansicht des Spielplans: gesamt, Vorrunde, Rückrunde (wie auf der Website). */
@@ -153,7 +160,7 @@ object TeamParser {
         return arr.mapNotNull { it as? JsonObject }
     }
 
-    private fun JsonObject.str(key: String): String? =
+    internal fun JsonObject.str(key: String): String? =
         (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
 
     /** Bevorzugt Mannschaften der laufenden Saison; gibt es keine, alle. */
@@ -203,6 +210,10 @@ object TeamParser {
                         Appointment(
                             o.str("date"), oppId, oppName, isHome, result, o.str("meeting_id"), o.str("league_id"), ownName,
                             live = isLive(o),
+                            state = o.str("state")?.lowercase(),
+                            complete = o.str("is_meeting_complete")?.lowercase() == "true",
+                            ownClubNr = o.str(if (isHome) "team_home_club_id" else "team_away_club_id"),
+                            opponentClubNr = o.str(if (isHome) "team_away_club_id" else "team_home_club_id"),
                         ),
                     )
                 }
@@ -212,13 +223,14 @@ object TeamParser {
     }
 
     /**
-     * Laufendes Spiel: Feld `live` oder `status` aus dem Spielplan. Format nicht am echten Konto geprüft,
-     * daher tolerant: "0", "false", "no" und fehlende Werte zählen als nicht laufend.
+     * Laufendes Spiel laut Website: Feld `live` (Wahrheitswert) oder `state` = "live". Der Wert von `state`
+     * bei einem laufenden Spiel ist nicht beobachtet; bekannt sind "scheduled" und "done". Tolerant:
+     * "0", "false", "no" und fehlende Werte zählen als nicht laufend.
      */
-    private fun isLive(o: JsonObject): Boolean {
+    internal fun isLive(o: JsonObject): Boolean {
         val live = o.str("live")?.lowercase()
-        if (live != null) return live !in setOf("0", "false", "no")
-        return o.str("status")?.lowercase() == "live"
+        if (live != null && live !in setOf("0", "false", "no")) return true
+        return o.str("state")?.lowercase() == "live"
     }
 
     fun parsePlayers(body: String): List<TeamMember>? =

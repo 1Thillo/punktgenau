@@ -40,6 +40,12 @@ data class GroupMeeting(
     val homeId: String?,
     val awayId: String?,
     val result: String?,
+    val meetingId: String? = null,
+    val homeClubNr: String? = null,
+    val awayClubNr: String? = null,
+    val live: Boolean = false,
+    val state: String? = null,
+    val complete: Boolean = false,
 )
 
 data class BalanceRow(
@@ -53,6 +59,7 @@ data class BalanceRow(
     val lost: Int,
     val positions: List<Pair<Int, String>>,
     val teamRank: Int?,
+    val clubNr: String? = null,
 )
 
 data class OpponentLine(val opponentRank: Int, val won: Int, val lost: Int)
@@ -77,13 +84,28 @@ private const val TEAM = PREFIX + "(\$groupname).gruppe.\$urlid_.mannschaft.\$te
 /** Öffentliche click-tt-Seiten der Website (Remix-Loader als JSON). Die Namensteile der Adressen sind beliebig. */
 class ClickTtRepository(private val session: SessionManager, private val baseUrl: HttpUrl) {
 
+    /** Antworten der öffentlichen Seiten für kurze Zeit, damit Hin- und Zurückgehen keine neuen Abrufe kostet. */
+    private val cache = TtlCache<String, Any>(5 * 60 * 1000L)
+
+    @Suppress("UNCHECKED_CAST")
     private suspend fun <T> load(path: String, route: String, parse: (JsonObject) -> T?): Result<T> =
         try {
-            val url = baseUrl.newBuilder().addPathSegments(path.trimStart('/')).addQueryParameter("_data", route).build()
-            val r = session.fetch(Request.Builder().url(url).build())
-            val root = ClickTtParser.root(r.body)
-            val value = root?.let(parse)
-            if (value == null) Result.Failed("Die Seite war nicht lesbar.") else Result.Ok(value)
+            val key = "$path|$route"
+            val cached = cache.get(key) as T?
+            if (cached != null) {
+                Result.Ok(cached)
+            } else {
+                val url = baseUrl.newBuilder().addPathSegments(path.trimStart('/')).addQueryParameter("_data", route).build()
+                val r = session.fetch(Request.Builder().url(url).build())
+                val root = ClickTtParser.root(r.body)
+                val value = root?.let(parse)
+                if (value == null) {
+                    Result.Failed("Die Seite war nicht lesbar.")
+                } else {
+                    cache.put(key, value as Any)
+                    Result.Ok(value)
+                }
+            }
         } catch (e: java.io.IOException) {
             Result.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
@@ -183,6 +205,13 @@ object ClickTtParser {
                             o.str("date"), o.str("team_home") ?: continue, o.str("team_away") ?: continue,
                             o.str("team_home_id"), o.str("team_away_id"),
                             if (won + lost > 0) "$won:$lost" else null,
+                            meetingId = o.str("meeting_id"),
+                            homeClubNr = o.str("team_home_club_id"),
+                            awayClubNr = o.str("team_away_club_id"),
+                            live = o.str("live")?.lowercase()?.let { it !in setOf("0", "false", "no") } == true ||
+                                o.str("state")?.lowercase() == "live",
+                            state = o.str("state")?.lowercase(),
+                            complete = o.str("is_meeting_complete")?.lowercase() == "true",
                         ),
                     )
                 }
@@ -210,7 +239,7 @@ object ClickTtParser {
                 }
             }
         }
-        return TeamDetails(contact, venues.values.toList())
+        return TeamDetails(contact, venues.values.toList(), clubNr = club.str("club_id"), clubName = club.str("club_name"))
     }
 
     fun ranking(root: JsonObject): List<BalanceRow>? =
@@ -230,6 +259,7 @@ object ClickTtParser {
                     po.int("position") to "${po.int("position_matches_won")}:${po.int("position_matches_lost")}"
                 },
                 teamRank = o.str("player_team_rank")?.toIntOrNull(),
+                clubNr = o.str("clubnr"),
             )
         }
 

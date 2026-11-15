@@ -71,14 +71,27 @@ object ProfileParser {
         return OwnProfile(name, id, null, null)
     }
 
-    /** Liefert (ttr, q-ttr). Fehlende Felder bleiben null. */
+    /**
+     * Liefert (ttr, q-ttr). Der Q-TTR steht in `vq_ttr`; die Website lässt das Feld oft leer und nennt den
+     * zuletzt fixierten Quartalswert in `ttr_last_fixed` (mit `ttr_last_fixed_date`). Fehlende Felder bleiben null.
+     */
     fun parseHistory(body: String): Pair<Int?, Int?> {
         val obj = try {
             json.parseToJsonElement(body).jsonObject
         } catch (e: Exception) {
             return null to null
         }
-        return intField(obj, "ttr") to intField(obj, "vq_ttr")
+        return intField(obj, "ttr") to (intField(obj, "vq_ttr") ?: intField(obj, "ttr_last_fixed"))
+    }
+
+    /** Vereinsname aus dem Verlauf (Feld `club_name`); null, wenn er fehlt. */
+    fun clubName(body: String): String? {
+        val obj = try {
+            json.parseToJsonElement(body).jsonObject
+        } catch (e: Exception) {
+            return null
+        }
+        return (obj["club_name"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
     }
 
     /** Ereignisse aus dem Verlauf (Liste unter `event`), ohne lesbares Datum ausgelassen. */

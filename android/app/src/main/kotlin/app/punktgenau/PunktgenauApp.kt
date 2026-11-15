@@ -23,6 +23,7 @@ class PunktgenauApp : Application() {
     val follow by lazy { app.punktgenau.data.FollowStore(getSharedPreferences("follow", MODE_PRIVATE)) }
     val spielbericht by lazy { app.punktgenau.data.SpielberichtRepository(session) }
     val spieltag by lazy { app.punktgenau.data.SpieltagRepository(teams, follow) }
+    val matchFinder by lazy { app.punktgenau.data.MatchFinder(teams) }
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
 
     /** Darstellung; hell ist der Standard. Wird in den Einstellungen gespeichert. */
