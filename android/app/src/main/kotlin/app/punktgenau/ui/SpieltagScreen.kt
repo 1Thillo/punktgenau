@@ -28,14 +28,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import app.punktgenau.data.GroupRef
 import app.punktgenau.data.LIVE_INTERVAL_MS
 import app.punktgenau.data.MatchTime
 import app.punktgenau.data.Result
-import app.punktgenau.data.Season
 import app.punktgenau.data.Spieltag
+import app.punktgenau.data.SpieltagKalender
 import app.punktgenau.data.SpieltagMatch
 import app.punktgenau.data.SpieltagRepository
 import app.punktgenau.data.TeamRef
@@ -94,6 +94,7 @@ fun SpieltagScreen(
     val days = Spieltag.days(list)
     val day = days.getOrNull(state.index)
     val dayMatches = list.filter { it.day == day }
+    val context = LocalContext.current
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }
@@ -125,6 +126,16 @@ fun SpieltagScreen(
                 { state.index = Spieltag.startIndex(days, LocalDate.now()) },
                 Modifier.fillMaxWidth(),
             ) { Text("Heute / nächster Spieltag") }
+            OutlinedButton(
+                {
+                    val termine = dayMatches.mapNotNull { SpieltagKalender.termin(it) }
+                    if (termine.isNotEmpty()) {
+                        oeffneKalender(context, kalenderDateiname("spieltag", day.toString()), SpieltagKalender.ics(termine))
+                    }
+                },
+                Modifier.fillMaxWidth(),
+                enabled = dayMatches.any { SpieltagKalender.termin(it) != null },
+            ) { Text("Spieltag in den Kalender") }
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dayMatches.isEmpty()) item { InfoText("Keine Spiele an diesem Tag.") }
@@ -144,17 +155,8 @@ private fun MatchCard(match: SpieltagMatch, links: Links) {
     val now = MatchTime.now()
     val running = Spieltag.isRunning(a, now)
     val team = match.team
-    val own = TeamRef(
-        GroupRef(
-            team.organization ?: "RTTVR",
-            team.season ?: Season.label(LocalDate.now()),
-            a.leagueId ?: team.groupId.orEmpty(),
-            team.league ?: team.name,
-        ),
-        team.id,
-        team.club?.let { "$it – ${team.name}" } ?: team.name,
-        a.ownClubNr,
-    )
+    val own = Spieltag.ownRef(team, a)
+    val context = LocalContext.current
     // Der Spielbericht ist erreichbar, sobald die Spielkennung da ist, also auch ohne Ergebnis.
     val report = if (own.group.groupId.isNotBlank()) Spieltag.reportLink(own, a, now) else null
     val home = report?.home ?: if (a.home == false) TeamRef(own.group, a.opponentTeamId, a.opponentName) else own
@@ -190,6 +192,18 @@ private fun MatchCard(match: SpieltagMatch, links: Links) {
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+        TextButton(
+            {
+                SpieltagKalender.termin(match, now)?.let { t ->
+                    oeffneKalender(
+                        context,
+                        kalenderDateiname("spiel", t.start.toLocalDate().toString(), t.home, t.away),
+                        SpieltagKalender.ics(listOf(t)),
+                    )
+                }
+            },
+            enabled = SpieltagKalender.termin(match, now) != null,
+        ) { Text("In den Kalender") }
     }
 }
 
