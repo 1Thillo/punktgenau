@@ -70,6 +70,13 @@ jobs:
           FILES="punktgenau-${TAG}.apk punktgenau-${TAG}.apk.sha256"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" $FILES --clobber
+            # release-please legt das Release mit eigenem Changelog an; die
+            # generierten Notizen (What's Changed, Full Changelog) ergänzen.
+            CURRENT=$(gh release view "$TAG" --json body --jq '.body')
+            GENERATED=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f tag_name="$TAG" --jq '.body')
+            if ! grep -q "What's Changed" <<< "$CURRENT"; then
+              gh release edit "$TAG" --notes "$(printf '%s\n\n%s' "$CURRENT" "$GENERATED")"
+            fi
           else
             gh release create "$TAG" $FILES --title "punktgenau ${TAG}" --generate-notes
           fi
