@@ -23,7 +23,8 @@ sealed interface SearchOutcome {
     data class Failed(val message: String) : SearchOutcome
 }
 
-data class PlayerHistory(val ttr: Int?, val qttr: Int?, val events: List<HistoryEvent>)
+/** [clubName] ist der Verein laut Verlauf (Feld `club_name`), sofern genannt. */
+data class PlayerHistory(val ttr: Int?, val qttr: Int?, val events: List<HistoryEvent>, val clubName: String? = null)
 
 sealed interface PlayerHistoryOutcome {
     data class Ok(val history: PlayerHistory) : PlayerHistoryOutcome
@@ -63,13 +64,14 @@ class PlayerRepository(private val session: SessionManager, private val baseUrl:
 
     /** Öffentliche TTR-Historie eines anderen Spielers (nur Werte, keine Anmeldung als dieser Spieler). */
     suspend fun history(nuId: String): PlayerHistoryOutcome {
+        historyCache.get(nuId)?.let { return PlayerHistoryOutcome.Ok(it) }
         return try {
             val r = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nuId")!!).build())
             if (AuthDetector.isUnauthenticated(r.body)) return PlayerHistoryOutcome.NeedsLogin
             val (ttr, q) = ProfileParser.parseHistory(r.body)
             val events = ProfileParser.parseEvents(r.body)
             if (ttr == null && q == null && events.isEmpty()) PlayerHistoryOutcome.Failed("Keine Werte für diesen Spieler.")
-            else PlayerHistoryOutcome.Ok(PlayerHistory(ttr, q, events))
+            else PlayerHistoryOutcome.Ok(PlayerHistory(ttr, q, events, ProfileParser.clubName(r.body)).also { historyCache.put(nuId, it) })
         } catch (e: java.io.IOException) {
             PlayerHistoryOutcome.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
@@ -84,7 +86,7 @@ class PlayerRepository(private val session: SessionManager, private val baseUrl:
             if (AuthDetector.isUnauthenticated(r.body)) return RatingOutcome.NeedsLogin
             val (ttr, q) = ProfileParser.parseHistory(r.body)
             val events = ProfileParser.parseEvents(r.body)
-            historyCache.put(nuId, PlayerHistory(ttr, q, events))
+            historyCache.put(nuId, PlayerHistory(ttr, q, events, ProfileParser.clubName(r.body)))
             RatingOutcome.Values(ttr, q, day?.let { ProfileParser.ratingOn(events, it) })
         } catch (e: java.io.IOException) {
             RatingOutcome.Failed("Netzwerkfehler. Bitte später erneut versuchen.")

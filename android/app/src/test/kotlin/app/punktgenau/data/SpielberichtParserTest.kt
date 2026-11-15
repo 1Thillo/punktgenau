@@ -52,6 +52,25 @@ class SpielberichtParserTest {
         assertEquals(null, SpielberichtParser.totals(html))
     }
 
+    /** Spielerverweise wie auf der Website: die click-tt-Nummer steht im Verweis, daraus wird die nuId. */
+    @Test
+    fun playerIdsFromLinks() {
+        val real = """<tr><td>D1-D1</td><td><a class="link font-bold" data-testid="click-tt-player-popup.trigger.385066" type="button" href="/click-tt/spieler/P2F01501C/spielerportrait">Alexander Felker</a> <!-- -->/ <br/> <a class="link" data-testid="click-tt-player-popup.trigger.1122231" href="/x">Björn Windhausen</a></td><td>Guido Josten /<br/> <a data-testid="click-tt-player-popup.trigger.1925844" href="/x">Lukas Reinartz</a></td><td>11:4</td><td>11:3</td><td>8:11</td><td>11:6</td><td></td><td>3:1</td><td>1<!-- -->:<!-- -->0</td></tr>"""
+        val g = SpielberichtParser.games(real).single()
+        assertEquals(listOf("Alexander Felker", "Björn Windhausen"), g.home)
+        assertEquals(listOf("NU385066", "NU1122231"), g.homeIds)
+        assertEquals(listOf(null, "NU1925844"), g.awayIds)
+        assertEquals("1:0", g.total)
+    }
+
+    /** Seite eines Spiels ohne Eintrag: keine Tabelle, also keine Einzel und keine Summen. */
+    @Test
+    fun emptyReportHasNoGames() {
+        val page = "<div>TTV Andernach III 0:0 SG Nachtsheim e. V.</div><p>Es konnten leider keine Daten geladen werden.</p>"
+        assertEquals(0, SpielberichtParser.games(page).size)
+        assertEquals(null, SpielberichtParser.totals(page))
+    }
+
     @Test
     fun headerRowIsSkipped() {
         val header = "<tr><th>Rang</th><th>Heim</th><th>Gast</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th><th>Sätze</th><th>Gesamt</th></tr>"

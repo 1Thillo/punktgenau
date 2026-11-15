@@ -35,17 +35,22 @@ import app.punktgenau.data.ClubTeam
 import app.punktgenau.data.ClickTtRepository
 import app.punktgenau.data.GroupRef
 import app.punktgenau.data.PlayerRepository
-import app.punktgenau.data.RatingOutcome
+import app.punktgenau.data.RankEntry
 import app.punktgenau.data.Result
 import app.punktgenau.data.TeamContact
 import app.punktgenau.data.TeamDetails
+import app.punktgenau.data.TeamRef
 import app.punktgenau.data.TeamRepository
 import app.punktgenau.data.Venue
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+
+/** Zustand der Vereinsansicht, der das Öffnen einer Mannschaft oder Person überdauert. */
+class ClubViewState {
+    var ranking by mutableStateOf(false)
+}
+
+/** Verweis auf eine Mannschaft des Vereins in ihrer Gruppe. */
+private fun teamRef(t: ClubTeam, association: String, season: String, clubNr: String) =
+    TeamRef(GroupRef(t.organization.ifBlank { association }, season, t.groupId, t.league.ifBlank { t.name }), t.teamId, t.name, clubNr)
 
 /** Verein: Kontakt, Spiellokale, Mannschaften mit Mannschaftskontakt, und die Vereinsrangliste. */
 @Composable
@@ -57,17 +62,19 @@ fun ClubScreen(
     clubNr: String,
     association: String,
     season: String,
+    view: ClubViewState,
+    links: Links,
     onClose: () -> Unit,
-    onOpenLeague: (GroupRef) -> Unit,
 ) {
     var state by remember { mutableStateOf<Result<Club>?>(null) }
-    var ranking by remember { mutableStateOf(false) }
+    var ranking by view::ranking
     LaunchedEffect(clubNr, season) { state = clubs.load(clubNr, association, season) }
+    BackHandler(onBack = onClose)
     BackHandler(enabled = ranking) { ranking = false }
 
     val club = (state as? Result.Ok)?.value
     if (ranking && club != null) {
-        ClubRankingPage(teams, players, club.teams, onClose = { ranking = false })
+        ClubRankingPage(teams, players, club.teams.map { teamRef(it, association, season, clubNr) }, links, onClose = { ranking = false })
         return
     }
 
@@ -106,13 +113,14 @@ fun ClubScreen(
             }
             item { SectionLabel("Mannschaften") }
             items(club?.teams.orEmpty()) { t: ClubTeam ->
-                val group = GroupRef(t.organization.ifBlank { association }, season, t.groupId, t.league.ifBlank { t.name })
+                val ref = teamRef(t, association, season, clubNr)
                 TeamCard(
                     clickTt = clickTt,
-                    group = group,
+                    group = ref.group,
                     team = t,
                     fallbackVenues = club?.info?.venues.orEmpty(),
-                    onOpenLeague = { onOpenLeague(group) },
+                    onOpenTeam = { links.team(ref) },
+                    onOpenLeague = { links.league(ref.group) },
                 )
             }
             item { Spacer(Modifier.height(16.dp)) }
@@ -121,7 +129,7 @@ fun ClubScreen(
 }
 
 @Composable
-private fun TeamCard(clickTt: ClickTtRepository, group: GroupRef, team: ClubTeam, fallbackVenues: List<Venue>, onOpenLeague: () -> Unit) {
+private fun TeamCard(clickTt: ClickTtRepository, group: GroupRef, team: ClubTeam, fallbackVenues: List<Venue>, onOpenTeam: () -> Unit, onOpenLeague: () -> Unit) {
     var details by remember(team.teamId) { mutableStateOf<TeamDetails?>(null) }
     var loading by remember(team.teamId) { mutableStateOf(true) }
     LaunchedEffect(team.teamId, group.season) {
@@ -129,9 +137,12 @@ private fun TeamCard(clickTt: ClickTtRepository, group: GroupRef, team: ClubTeam
         details = (clickTt.teamDetails(group, team.teamId) as? Result.Ok)?.value
         loading = false
     }
-    AppCard(onClick = onOpenLeague) {
+    AppCard(onClick = onOpenTeam) {
         Text(team.name, style = MaterialTheme.typography.titleMedium)
-        Text(team.league, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(team.league, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            TextButton(onOpenLeague) { Text("Liga") }
+        }
         val d = details
         when {
             loading -> InfoText("Lade Kontakt und Spiellokal …")
@@ -172,27 +183,25 @@ private fun VenueRow(v: Venue) {
     }
 }
 
-private data class ClubRankEntry(val name: String, val team: String, val value: Int, val isTtr: Boolean)
-
 /**
- * Vereinsrangliste: die Spieler aus den Mannschaftsaufstellungen des Vereins (dedupliziert),
- * je aktueller TTR, sonst Q-TTR. Spieler, die in keiner Aufstellung stehen, fehlen.
+ * Vereinsrangliste: die Spieler aus den Mannschaftsaufstellungen des Vereins (dedupliziert), umschaltbar
+ * zwischen TTR und QTTR. Spieler, die in keiner Aufstellung stehen, fehlen.
  */
 @Composable
-private fun ClubRankingPage(teams: TeamRepository, players: PlayerRepository, clubTeams: List<ClubTeam>, onClose: () -> Unit) {
+private fun ClubRankingPage(teams: TeamRepository, players: PlayerRepository, clubTeams: List<TeamRef>, links: Links, onClose: () -> Unit) {
     var progress by remember { mutableStateOf("Lade Mannschaftsaufstellungen …") }
     var failed by remember { mutableStateOf<String?>(null) }
-    val entries = remember { mutableStateListOf<ClubRankEntry>() }
+    val entries = remember { mutableStateListOf<RankEntry>() }
     LaunchedEffect(clubTeams) {
         entries.clear()
         failed = null
-        val seen = LinkedHashMap<String, Pair<String, String>>()
+        val seen = LinkedHashMap<String, RankEntry>()
         var needsLogin = false
         for (t in clubTeams) {
             when (val r = teams.players(t.teamId)) {
                 is Result.Ok -> r.value.forEach { m ->
                     val nu = m.nuId ?: return@forEach
-                    seen.putIfAbsent(nu, m.displayName to t.name)
+                    seen.putIfAbsent(nu, RankEntry(nu, m.displayName, t.name, null, null, t.clubNr, t))
                 }
                 Result.NeedsLogin -> needsLogin = true
                 is Result.Failed -> Unit
@@ -203,49 +212,18 @@ private fun ClubRankingPage(teams: TeamRepository, players: PlayerRepository, cl
             progress = ""
             return@LaunchedEffect
         }
-        val gate = Semaphore(5)
-        var done = 0
-        coroutineScope {
-            seen.map { (nu, info) ->
-                async {
-                    gate.withPermit {
-                        val r = players.ratings(nu)
-                        if (r is RatingOutcome.Values) {
-                            val v = r.ttr ?: r.qttr
-                            if (v != null) entries.add(ClubRankEntry(info.first, info.second, v, r.ttr != null))
-                        }
-                        done++
-                        progress = "Lade Werte: $done von ${seen.size}"
-                    }
-                }
-            }.awaitAll()
-        }
+        loadRatings(players, seen.values.toList(), onEntry = { entries.add(it) }) { done, total -> progress = "Lade Werte: $done von $total" }
         progress = ""
     }
-    val sorted = entries.sortedByDescending { it.value }
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück zum Verein") }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { ScreenTitle("Vereinsrangliste") }
-            item { InfoText("Spieler aus den Mannschaftsaufstellungen, nach aktuellem TTR (Q-TTR, wenn kein TTR geliefert wird).") }
+            item { InfoText("Spieler aus den Mannschaftsaufstellungen des Vereins.") }
+            item { RatingModeChips() }
             failed?.let { msg -> item { InfoText(msg) } }
             if (progress.isNotEmpty() && failed == null) item { InfoText(progress) }
-            items(sorted.size) { i ->
-                val e = sorted[i]
-                AppCard {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        RankBadge(i + 1)
-                        Column(Modifier.weight(1f)) {
-                            Text(e.name, style = MaterialTheme.typography.titleMedium)
-                            Text(e.team, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(e.value.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            if (!e.isTtr) Text("Q-TTR", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
+            rankingItems(entries, RatingModeState.mode, links.player)
             item { Spacer(Modifier.height(16.dp)) }
         }
     }

@@ -24,15 +24,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import app.punktgenau.data.GroupRef
 import app.punktgenau.data.Loaded
-import app.punktgenau.data.PlayerHit
+import app.punktgenau.data.PlayerLink
+import app.punktgenau.data.ReportLink
 import app.punktgenau.data.Season
+import app.punktgenau.data.TeamRef
+import app.punktgenau.ui.ClubViewState
+import app.punktgenau.ui.LeagueNavState
+import app.punktgenau.ui.Links
+import app.punktgenau.ui.SpieltagState
+import app.punktgenau.ui.TeamScreen
+import app.punktgenau.ui.TeamViewState
 import app.punktgenau.ui.AppointmentScreen
 import app.punktgenau.ui.CalculatorScreen
 import app.punktgenau.ui.CalculatorState
@@ -76,21 +87,45 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     SEARCH("Suche", Icons.Filled.Search),
 }
 
+/**
+ * Ein Bildschirm über den Reitern. Die geöffneten Bildschirme liegen als Stapel übereinander; "Zurück" nimmt
+ * den obersten weg. So führt jeder Verweis (Person, Mannschaft, Verein, Liga, Spielbericht) weiter, und der
+ * Rückweg geht Schritt für Schritt. Zustand, der den Rückweg überdauern soll, hängt am Eintrag selbst.
+ */
+private sealed interface Dest {
+    data object Appointments : Dest
+    data object Transfers : Dest
+    data object Follow : Dest
+    class Spieltag : Dest { val state = SpieltagState() }
+    class Report(val link: ReportLink) : Dest
+    class Player(val link: PlayerLink) : Dest
+    class Club(val clubNr: String) : Dest { val state = ClubViewState() }
+    class League(val group: GroupRef) : Dest { val state = LeagueNavState(group) }
+    class Team(val ref: TeamRef) : Dest { val state = TeamViewState() }
+}
+
 @Composable
 private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Unit) {
     var tab by remember { mutableStateOf(Tab.START) }
     var showLogin by remember { mutableStateOf(false) }
-    var showAppointments by remember { mutableStateOf(false) }
-    var clubNr by remember { mutableStateOf<String?>(null) }
-    var showTransfers by remember { mutableStateOf(false) }
-    var showSpieltag by remember { mutableStateOf(false) }
-    var showFollow by remember { mutableStateOf(false) }
-    var report by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
-    var viewPlayer by remember { mutableStateOf<PlayerHit?>(null) }
-    var openLeague by remember { mutableStateOf<app.punktgenau.data.GroupRef?>(null) }
+    val stack = remember { mutableStateListOf<Dest>() }
+    val leagueTab = remember { LeagueNavState() }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
     val scope = rememberCoroutineScope()
     val calc = remember { CalculatorState() }
+
+    fun pop() {
+        if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex)
+    }
+    val links = remember {
+        Links(
+            player = { stack.add(Dest.Player(it)) },
+            team = { stack.add(Dest.Team(it)) },
+            club = { stack.add(Dest.Club(it)) },
+            league = { stack.add(Dest.League(it)) },
+            report = { stack.add(Dest.Report(it)) },
+        )
+    }
 
     fun refresh() {
         scope.launch {
@@ -103,6 +138,26 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         }
     }
 
+    // Eigene Mannschaften für die Verknüpfung Verlauf → Spielbericht; einmal geladen, dann gemerkt.
+    var ownTeams by remember { mutableStateOf<List<TeamRef>?>(null) }
+    suspend fun ownTeamRefs(): List<TeamRef> {
+        ownTeams?.let { return it }
+        val list = (app.teams.myTeams() as? app.punktgenau.data.Result.Ok)?.value.orEmpty().mapNotNull { t ->
+            val org = t.organization ?: return@mapNotNull null
+            val season = t.season ?: return@mapNotNull null
+            val group = t.groupId ?: return@mapNotNull null
+            TeamRef(GroupRef(org, season, group, t.league ?: t.name), t.id, t.name)
+        }
+        if (list.isNotEmpty()) ownTeams = list
+        return list
+    }
+
+    fun loggedOut() {
+        stack.clear()
+        ui = StartUi.LoggedOut
+        tab = Tab.START
+    }
+
     LaunchedEffect(ui) {
         (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { if (calc.ownText.isBlank()) calc.ownText = it.toString() } }
     }
@@ -111,19 +166,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         if (app.jar.hasAuthCookie()) refresh() else ui = StartUi.LoggedOut
     }
 
-    // Zurück-Geste: stufenweise zurück zum Start, erst dort verlässt sie die App.
-    val canGoBack = showLogin || showAppointments || showTransfers || showSpieltag || showFollow || report != null || viewPlayer != null || openLeague != null || clubNr != null || tab != Tab.START
-    BackHandler(enabled = canGoBack) {
+    // Zurück-Geste: erst den obersten Bildschirm schließen, dann zum Start-Reiter, erst dort verlässt sie die App.
+    BackHandler(enabled = showLogin || stack.isNotEmpty() || tab != Tab.START) {
         when {
             showLogin -> showLogin = false
-            report != null -> report = null
-            showFollow -> showFollow = false
-            showSpieltag -> showSpieltag = false
-            openLeague != null -> openLeague = null
-            clubNr != null -> clubNr = null
-            viewPlayer != null -> viewPlayer = null
-            showAppointments -> { showAppointments = false; tab = Tab.CALCULATOR }
-            showTransfers -> showTransfers = false
+            stack.isNotEmpty() -> pop()
             else -> tab = Tab.START
         }
     }
@@ -141,81 +188,64 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
         return
     }
 
-    openLeague?.let { g ->
-        LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = true, initial = g, onBack = { openLeague = null })
-        return
-    }
-
-    if (showTransfers) {
-        TransferScreen(app.transfers, association = "RTTVR", onClose = { showTransfers = false })
-        return
-    }
-
-    report?.let { (url, title, live) ->
-        SpielberichtScreen(app.spielbericht, url = url, title = title, live = live, onClose = { report = null })
-        return
-    }
-
-    if (showFollow) {
-        FollowScreen(app.clubs, app.follow, onClose = { showFollow = false })
-        return
-    }
-
-    if (showSpieltag) {
-        SpieltagScreen(
-            app.spieltag,
-            onClose = { showSpieltag = false },
-            onNeedsLogin = { showSpieltag = false; ui = StartUi.LoggedOut; tab = Tab.START },
-            onOpenFollow = { showFollow = true },
-            onOpenReport = { url, title, live -> report = Triple(url, title, live) },
-        )
-        return
-    }
-
-    clubNr?.let { nr ->
-        ClubScreen(
-            clubs = app.clubs,
-            clickTt = app.clickTt,
-            teams = app.teams,
-            players = app.playerRepo,
-            clubNr = nr,
-            association = "RTTVR",
-            season = Season.label(java.time.LocalDate.now()),
-            onClose = { clubNr = null },
-            onOpenLeague = { openLeague = it },
-        )
-        return
-    }
-
-    // Liegt über dem Verein-Screen nicht, sondern darunter: Schließen des Vereins führt zurück hierher.
-    viewPlayer?.let { p ->
-        PlayerViewScreen(
-            app.playerRepo,
-            clubs = app.clubs,
-            nuId = p.nuId.orEmpty(),
-            name = p.displayName,
-            club = p.club,
-            onClose = { viewPlayer = null },
-            onUseInCalculator = { value ->
-                calc.ownText = value.toString()
-                viewPlayer = null
-                tab = Tab.CALCULATOR
-            },
-            onOpenClub = { ref -> clubNr = ref.clubNr },
-        )
-        return
-    }
-
-    if (showAppointments) {
-        AppointmentScreen(
-            teams = app.teams,
-            players = app.playerRepo,
-            ownNuId = (ui as? StartUi.Shown)?.profile?.nuId,
-            onAddOpponent = { calc.addOpponent(it) },
-            onSetOwn = { calc.ownText = it.toString() },
-            onClose = { showAppointments = false; tab = Tab.CALCULATOR },
-            onNeedsLogin = { showAppointments = false; ui = StartUi.LoggedOut; tab = Tab.START },
-        )
+    val top = stack.lastOrNull()
+    if (top != null) {
+        // key: zwei Bildschirme derselben Art hintereinander (Mannschaft A, dann Mannschaft B) teilen keinen Zustand.
+        key(top) {
+            when (top) {
+                Dest.Appointments -> AppointmentScreen(
+                    teams = app.teams,
+                    players = app.playerRepo,
+                    ownNuId = (ui as? StartUi.Shown)?.profile?.nuId,
+                    onAddOpponent = { calc.addOpponent(it) },
+                    onSetOwn = { calc.ownText = it.toString() },
+                    onClose = { pop(); tab = Tab.CALCULATOR },
+                    onNeedsLogin = { loggedOut() },
+                )
+                Dest.Transfers -> TransferScreen(app.transfers, association = "RTTVR", onClose = { pop() })
+                Dest.Follow -> FollowScreen(app.clubs, app.follow, onClose = { pop() })
+                is Dest.Spieltag -> SpieltagScreen(
+                    app.spieltag,
+                    state = top.state,
+                    links = links,
+                    onClose = { pop() },
+                    onNeedsLogin = { loggedOut() },
+                    onOpenFollow = { stack.add(Dest.Follow) },
+                )
+                is Dest.Report -> SpielberichtScreen(app.spielbericht, link = top.link, links = links, onClose = { pop() })
+                is Dest.Player -> PlayerViewScreen(
+                    app.playerRepo,
+                    clubs = app.clubs,
+                    teams = app.teams,
+                    finder = app.matchFinder,
+                    player = top.link,
+                    links = links,
+                    onClose = { pop() },
+                    onUseInCalculator = { value ->
+                        calc.ownText = value.toString()
+                        stack.clear()
+                        tab = Tab.CALCULATOR
+                    },
+                )
+                is Dest.Club -> ClubScreen(
+                    clubs = app.clubs,
+                    clickTt = app.clickTt,
+                    teams = app.teams,
+                    players = app.playerRepo,
+                    clubNr = top.clubNr,
+                    association = "RTTVR",
+                    season = Season.label(java.time.LocalDate.now()),
+                    view = top.state,
+                    links = links,
+                    onClose = { pop() },
+                )
+                is Dest.League -> LeagueScreen(
+                    app.clickTt, app.teams, app.playerRepo,
+                    loggedIn = ui is StartUi.Shown, state = top.state, links = links, onBack = { pop() },
+                )
+                is Dest.Team -> TeamScreen(app.clickTt, app.teams, app.playerRepo, team = top.ref, state = top.state, links = links, onClose = { pop() })
+            }
+        }
         return
     }
 
@@ -240,26 +270,28 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onLogout = { app.session.logout(); ui = StartUi.LoggedOut },
                     onOpenHistory = { tab = Tab.HISTORY },
                     onOpenCalculator = { tab = Tab.CALCULATOR },
-                    onOpenClub = { scope.launch { clubNr = app.teams.ownClubNr() ?: clubNr } },
-                    onOpenTransfers = { showTransfers = true },
-                    onOpenSpieltag = { showSpieltag = true },
+                    onOpenClub = { scope.launch { app.teams.ownClubNr()?.let { stack.add(Dest.Club(it)) } } },
+                    onOpenTransfers = { stack.add(Dest.Transfers) },
+                    onOpenSpieltag = { stack.add(Dest.Spieltag()) },
                 )
                 Tab.HISTORY -> HistoryScreen(
                     events = (ui as? StartUi.Shown)?.profile?.events.orEmpty(),
                     loggedIn = ui is StartUi.Shown,
+                    findReport = { e -> app.matchFinder.find(e, ownTeamRefs()) },
+                    onOpenReport = links.report,
                 )
                 Tab.CALCULATOR -> CalculatorScreen(
                     calc,
-                    onLoadAppointment = { showAppointments = true },
+                    onLoadAppointment = { stack.add(Dest.Appointments) },
                     onResetOwn = {
                         (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString() } }
                     },
                 )
-                Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown)
+                Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown, state = leagueTab, links = links)
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
                     advanced = app.advancedSearch,
-                    onViewPlayer = { viewPlayer = it },
+                    onViewPlayer = { hit -> hit.nuId?.let { stack.add(Dest.Player(PlayerLink(it, hit.displayName, club = hit.club))) } },
                     onAddToCalculator = { calc.addOpponent(it); tab = Tab.CALCULATOR },
                     onNeedsLogin = { ui = StartUi.LoggedOut; tab = Tab.START },
                 )

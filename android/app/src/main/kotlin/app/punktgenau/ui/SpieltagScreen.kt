@@ -1,6 +1,7 @@
 package app.punktgenau.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,61 +30,69 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.punktgenau.data.GroupRef
 import app.punktgenau.data.LIVE_INTERVAL_MS
+import app.punktgenau.data.MatchTime
 import app.punktgenau.data.Result
 import app.punktgenau.data.Season
 import app.punktgenau.data.Spieltag
 import app.punktgenau.data.SpieltagMatch
 import app.punktgenau.data.SpieltagRepository
+import app.punktgenau.data.TeamRef
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Zustand des Spieltags, der das Öffnen eines Spielberichts oder einer Mannschaft überdauert. */
+class SpieltagState {
+    var matches by mutableStateOf<List<SpieltagMatch>?>(null)
+    var index by mutableIntStateOf(-1)
+}
+
 /** Spieltag-Übersicht: die Spiele der eigenen und gemerkten Mannschaften, Tag für Tag. */
 @Composable
 fun SpieltagScreen(
     repo: SpieltagRepository,
+    state: SpieltagState,
+    links: Links,
     onClose: () -> Unit,
     onNeedsLogin: () -> Unit,
     onOpenFollow: () -> Unit,
-    onOpenReport: (String, String, Boolean) -> Unit,
 ) {
-    var matches by remember { mutableStateOf<List<SpieltagMatch>?>(null) }
     var failed by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
-    var index by remember { mutableIntStateOf(-1) }
     var liveTick by remember { mutableIntStateOf(0) }
     BackHandler(onBack = onClose)
 
     // Laufende Spiele alle paar Sekunden neu laden. Die Schleife endet mit dem Bildschirm (Coroutine-Abbruch).
-    LaunchedEffect(liveTick, reload, matches != null) {
-        val current = matches ?: return@LaunchedEffect
-        if (current.none { it.appointment.live }) return@LaunchedEffect
+    LaunchedEffect(liveTick, reload, state.matches != null) {
+        val current = state.matches ?: return@LaunchedEffect
+        if (current.none { Spieltag.isRunning(it.appointment, MatchTime.now()) }) return@LaunchedEffect
         delay(LIVE_INTERVAL_MS)
         val r = repo.refreshLive(current)
-        if (r is Result.Ok) {
-            matches = r.value
-            liveTick++
-        }
+        if (r is Result.Ok) state.matches = r.value
+        liveTick++
     }
 
     LaunchedEffect(reload) {
-        matches = null
+        // Beim Zurückkommen (z. B. aus einem Spielbericht) bleibt die geladene Liste stehen.
+        if (reload == 0 && state.matches != null) return@LaunchedEffect
+        state.matches = null
         failed = null
         when (val r = repo.ownMatches()) {
             is Result.Ok -> {
-                matches = r.value
-                index = Spieltag.startIndex(Spieltag.days(r.value), LocalDate.now())
+                state.matches = r.value
+                state.index = Spieltag.startIndex(Spieltag.days(r.value), LocalDate.now())
             }
             Result.NeedsLogin -> onNeedsLogin()
             is Result.Failed -> failed = r.message
         }
     }
 
-    val list = matches.orEmpty()
+    val list = state.matches.orEmpty()
     val days = Spieltag.days(list)
-    val day = days.getOrNull(index)
+    val day = days.getOrNull(state.index)
     val dayMatches = list.filter { it.day == day }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
@@ -93,7 +102,7 @@ fun SpieltagScreen(
         OutlinedButton(onOpenFollow, Modifier.fillMaxWidth()) { Text("Mannschaften merken") }
         Spacer(Modifier.height(8.dp))
         val f = failed
-        val m = matches
+        val m = state.matches
         if (f != null) {
             InfoText(f)
         } else if (m == null) {
@@ -102,7 +111,7 @@ fun SpieltagScreen(
             InfoText("Keine Spiele gefunden.")
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton({ index = (index - 1).coerceAtLeast(0) }, enabled = index > 0) { Text("◀") }
+                TextButton({ state.index = (state.index - 1).coerceAtLeast(0) }, enabled = state.index > 0) { Text("◀") }
                 Text(
                     day?.let { fmtDay(it) }.orEmpty(),
                     style = MaterialTheme.typography.titleMedium,
@@ -110,16 +119,16 @@ fun SpieltagScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton({ index = (index + 1).coerceAtMost(days.lastIndex) }, enabled = index < days.lastIndex) { Text("▶") }
+                TextButton({ state.index = (state.index + 1).coerceAtMost(days.lastIndex) }, enabled = state.index < days.lastIndex) { Text("▶") }
             }
             OutlinedButton(
-                { index = Spieltag.startIndex(days, LocalDate.now()) },
+                { state.index = Spieltag.startIndex(days, LocalDate.now()) },
                 Modifier.fillMaxWidth(),
             ) { Text("Heute / nächster Spieltag") }
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dayMatches.isEmpty()) item { InfoText("Keine Spiele an diesem Tag.") }
-                items(dayMatches) { match -> MatchCard(match, onOpenReport) }
+                items(dayMatches) { match -> MatchCard(match, links) }
                 item {
                     OutlinedButton({ reload++ }, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
                     Spacer(Modifier.height(16.dp))
@@ -130,58 +139,67 @@ fun SpieltagScreen(
 }
 
 @Composable
-private fun MatchCard(match: SpieltagMatch, onOpenReport: (String, String, Boolean) -> Unit) {
-    val report = match.appointment.let { a ->
-        val meeting = a.meetingId
-        val league = a.leagueId
-        if (a.result != null && meeting != null && league != null) {
-            Spieltag.reportUrl(match.team.organization ?: "RTTVR", match.team.season ?: Season.label(LocalDate.now()), league, meeting)
-        } else {
-            null
-        }
-    }
-    val home = match.appointment.home == true
-    val ownId = match.team.id
-    val oppId = match.appointment.opponentTeamId
-    val homeId = if (home) ownId else oppId
-    val ownLabel = match.appointment.ownName
-        ?: match.team.club?.let { "$it – ${match.team.name}" }
-        ?: match.team.name
-    val homeName = if (home) ownLabel else match.appointment.opponentName
-    val awayName = if (home) match.appointment.opponentName else ownLabel
-    AppCard {
+private fun MatchCard(match: SpieltagMatch, links: Links) {
+    val a = match.appointment
+    val now = MatchTime.now()
+    val running = Spieltag.isRunning(a, now)
+    val team = match.team
+    val own = TeamRef(
+        GroupRef(
+            team.organization ?: "RTTVR",
+            team.season ?: Season.label(LocalDate.now()),
+            a.leagueId ?: team.groupId.orEmpty(),
+            team.league ?: team.name,
+        ),
+        team.id,
+        team.club?.let { "$it – ${team.name}" } ?: team.name,
+        a.ownClubNr,
+    )
+    // Der Spielbericht ist erreichbar, sobald die Spielkennung da ist, also auch ohne Ergebnis.
+    val report = if (own.group.groupId.isNotBlank()) Spieltag.reportLink(own, a, now) else null
+    val home = report?.home ?: if (a.home == false) TeamRef(own.group, a.opponentTeamId, a.opponentName) else own
+    val away = report?.away ?: if (a.home == false) own else TeamRef(own.group, a.opponentTeamId, a.opponentName)
+    AppCard(onClick = report?.let { r -> { links.report(r) } }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                match.team.league.orEmpty() + (match.time?.let { " · $it Uhr" }.orEmpty()),
+                team.league.orEmpty() + (match.time?.let { " · $it Uhr" }.orEmpty()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            if (match.appointment.live) {
-                Text("LIVE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            if (running) {
+                Text(
+                    if (a.live) "LIVE" else "läuft",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Spacer(Modifier.width(8.dp))
             }
-            Text(match.appointment.result ?: "–", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(a.result ?: "–", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))
-        TeamLine(homeName, bold = homeId == ownId)
-        TeamLine(awayName, bold = (if (home) oppId else ownId) == ownId)
+        // Mit Spielbericht führt die ganze Karte dorthin (beide Mannschaften stehen dort); sonst öffnet der Name die Mannschaft.
+        TeamLine(home.name, bold = home.teamId == team.id, onClick = if (report == null) ({ links.team(home) }) else null)
+        TeamLine(away.name, bold = away.teamId == team.id, onClick = if (report == null) ({ links.team(away) }) else null)
         if (report != null) {
             Spacer(Modifier.height(6.dp))
-            OutlinedButton(
-                { onOpenReport(report, "$homeName gegen $awayName", match.appointment.live) },
-                Modifier.fillMaxWidth(),
-            ) { Text("Spielbericht öffnen") }
+            Text(
+                if (running) "Live-Spielbericht öffnen" else "Spielbericht öffnen",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
 
 @Composable
-private fun TeamLine(name: String, bold: Boolean) {
+private fun TeamLine(name: String, bold: Boolean, onClick: (() -> Unit)?) {
     Text(
         name,
         style = MaterialTheme.typography.bodyLarge,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
     )
 }
 
