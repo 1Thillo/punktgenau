@@ -182,9 +182,9 @@ private fun dayOf(a: Appointment?): LocalDate? =
     a?.date?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
 private fun formatDate(iso: String?): String? {
-    val d = iso?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return iso
-    val time = iso.drop(11).take(5)
-    return "%02d.%02d.%d".format(d.dayOfMonth, d.monthValue, d.year) + if (time.length == 5) ", $time Uhr" else ""
+    val d = app.punktgenau.data.MatchTime.day(iso) ?: return iso
+    return "%02d.%02d.%d".format(d.dayOfMonth, d.monthValue, d.year) +
+        (app.punktgenau.data.MatchTime.time(iso)?.let { ", $it Uhr" }.orEmpty())
 }
 
 @Composable

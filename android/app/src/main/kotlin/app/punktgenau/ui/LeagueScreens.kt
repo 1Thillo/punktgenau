@@ -38,20 +38,20 @@ import app.punktgenau.data.GroupMeeting
 import app.punktgenau.data.GroupRef
 import app.punktgenau.data.LeagueGroup
 import app.punktgenau.data.LeagueTable
-import app.punktgenau.data.PlayerLine
+import app.punktgenau.data.MatchTime
+import app.punktgenau.data.PlayerLink
 import app.punktgenau.data.PlayerRepository
-import app.punktgenau.data.RatingOutcome
+import app.punktgenau.data.RankEntry
+import app.punktgenau.data.ReportLink
 import app.punktgenau.data.Result
 import app.punktgenau.data.Season
+import app.punktgenau.data.Spieltag
 import app.punktgenau.data.TeamInfo
+import app.punktgenau.data.TeamRef
 import app.punktgenau.data.TeamRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import java.time.LocalDate
 
-private sealed interface Nav {
+internal sealed interface Nav {
     data object Home : Nav
     data object Districts : Nav
     data class Leagues(val district: District) : Nav
@@ -60,14 +60,27 @@ private sealed interface Nav {
     data class Schedule(val group: GroupRef) : Nav
     data class Ranking(val group: GroupRef) : Nav
     data class PickTeam(val group: GroupRef) : Nav
-    data class TeamPlayers(val group: GroupRef, val teamId: String, val teamName: String) : Nav
     data class TtrRanking(val group: GroupRef) : Nav
+}
+
+/** Seite innerhalb des Liga-Bereichs; überdauert das Öffnen einer Mannschaft, Person oder eines Spielberichts. */
+class LeagueNavState(val initial: GroupRef? = null) {
+    internal var nav by mutableStateOf<Nav>(if (initial != null) Nav.Hub(initial) else Nav.Home)
 }
 
 /** Liga-Reiter: eigene Ligen, Ligenauswahl, Seiten der Gruppe. */
 @Composable
-fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: PlayerRepository, loggedIn: Boolean, initial: GroupRef? = null, onBack: (() -> Unit)? = null) {
-    var nav by remember { mutableStateOf<Nav>(if (initial != null) Nav.Hub(initial) else Nav.Home) }
+fun LeagueScreen(
+    clickTt: ClickTtRepository,
+    teams: TeamRepository,
+    players: PlayerRepository,
+    loggedIn: Boolean,
+    state: LeagueNavState,
+    links: Links,
+    onBack: (() -> Unit)? = null,
+) {
+    val initial = state.initial
+    var nav by state::nav
     var myTeams by remember { mutableStateOf<List<TeamInfo>>(emptyList()) }
     LaunchedEffect(loggedIn) {
         if (loggedIn) (teams.myTeams() as? Result.Ok)?.let { myTeams = it.value }
@@ -85,7 +98,6 @@ fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: Pla
         is Nav.Schedule -> Nav.Hub(n.group)
         is Nav.Ranking -> Nav.Hub(n.group)
         is Nav.PickTeam -> Nav.Hub(n.group)
-        is Nav.TeamPlayers -> Nav.PickTeam(n.group)
         is Nav.TtrRanking -> Nav.Hub(n.group)
     }
     BackHandler(enabled = nav != Nav.Home || onBack != null) { if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) }
@@ -95,7 +107,7 @@ fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: Pla
             TextButton({ if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) }) { Text("Zurück") }
         }
         when (val n = nav) {
-            Nav.Home -> LeagueHome(myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onChoose = { nav = Nav.Districts })
+            Nav.Home -> LeagueHome(myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onOpenTeam = links.team, onChoose = { nav = Nav.Districts })
             Nav.Districts -> DistrictPage(clickTt, association, season) { nav = Nav.Leagues(it) }
             is Nav.Leagues -> LeaguePickPage(clickTt, association, season, n.district) { g ->
                 nav = Nav.Hub(GroupRef(association, season, g.groupId, g.name))
@@ -104,12 +116,11 @@ fun LeagueScreen(clickTt: ClickTtRepository, teams: TeamRepository, players: Pla
                 onTable = { nav = Nav.Table(n.group) }, onSchedule = { nav = Nav.Schedule(n.group) },
                 onRanking = { nav = Nav.Ranking(n.group) }, onTeams = { nav = Nav.PickTeam(n.group) },
                 onTtr = { nav = Nav.TtrRanking(n.group) })
-            is Nav.Table -> TablePage(clickTt, n.group, ownTeamIds)
-            is Nav.Schedule -> SchedulePage(clickTt, n.group, ownTeamIds)
-            is Nav.Ranking -> RankingPage(clickTt, n.group)
-            is Nav.PickTeam -> PickTeamPage(clickTt, n.group) { id, name -> nav = Nav.TeamPlayers(n.group, id, name) }
-            is Nav.TeamPlayers -> TeamPlayersPage(clickTt, n.group, n.teamId, n.teamName)
-            is Nav.TtrRanking -> TtrRankingPage(clickTt, teams, players, n.group)
+            is Nav.Table -> TablePage(clickTt, n.group, ownTeamIds, links)
+            is Nav.Schedule -> SchedulePage(clickTt, n.group, ownTeamIds, links)
+            is Nav.Ranking -> RankingPage(clickTt, n.group, links)
+            is Nav.PickTeam -> PickTeamPage(clickTt, n.group) { id, name -> links.team(TeamRef(n.group, id, name)) }
+            is Nav.TtrRanking -> TtrRankingPage(clickTt, teams, players, n.group, links)
         }
     }
 }
@@ -125,7 +136,7 @@ private fun <T> Loaded(state: Result<T>?, content: @Composable (T) -> Unit) {
 }
 
 @Composable
-private fun LeagueHome(myTeams: List<TeamInfo>, loggedIn: Boolean, onOpen: (GroupRef) -> Unit, onChoose: () -> Unit) {
+private fun LeagueHome(myTeams: List<TeamInfo>, loggedIn: Boolean, onOpen: (GroupRef) -> Unit, onOpenTeam: (TeamRef) -> Unit, onChoose: () -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { ScreenTitle("Liga") }
         item { SectionLabel("Meine Ligen") }
@@ -137,6 +148,10 @@ private fun LeagueHome(myTeams: List<TeamInfo>, loggedIn: Boolean, onOpen: (Grou
             }) {
                 Text(t.league ?: t.name, style = MaterialTheme.typography.titleMedium)
                 Text(t.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val org = t.organization; val gid = t.groupId; val s = t.season
+                if (org != null && gid != null && s != null) {
+                    TextButton({ onOpenTeam(TeamRef(GroupRef(org, s, gid, t.league ?: t.name), t.id, t.name)) }) { Text("Mannschaft ansehen") }
+                }
             }
         }
         item { SectionLabel("Andere Liga") }
@@ -184,8 +199,8 @@ private fun HubPage(g: GroupRef, onTable: () -> Unit, onSchedule: () -> Unit, on
         item { HubTile("Tabelle", "Platzierung, Spiele, Punkte", onTable) }
         item { HubTile("Spielplan", "Alle Spiele der Gruppe, Vor- und Rückrunde", onSchedule) }
         item { HubTile("Bilanz-Rangliste", "Beste Spieler nach Bilanz", onRanking) }
-        item { HubTile("Aufstellung", "Spieler einer Mannschaft mit Einsätzen", onTeams) }
-        item { HubTile("TTR-Rangliste", "Alle Spieler der Gruppe nach TTR (lädt einige Sekunden)", onTtr) }
+        item { HubTile("Mannschaften", "Rangliste, Spielplan und Bilanzen einer Mannschaft", onTeams) }
+        item { HubTile("TTR-Rangliste", "Alle Spieler der Gruppe nach TTR oder QTTR (lädt einige Sekunden)", onTtr) }
     }
 }
 
@@ -214,7 +229,7 @@ internal fun RankBadge(rank: Int, highlight: Boolean = false) {
 }
 
 @Composable
-private fun TablePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>) {
+private fun TablePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>, links: Links) {
     var state by remember { mutableStateOf<Result<LeagueTable>?>(null) }
     LaunchedEffect(g) { state = clickTt.table(g) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -224,7 +239,7 @@ private fun TablePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>)
         val table = (state as? Result.Ok)?.value
         items(table?.rows.orEmpty()) { r ->
             val mine = r.teamId in own
-            AppCard {
+            AppCard(onClick = { links.team(TeamRef(g, r.teamId, r.teamName)) }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     RankBadge(r.rank, mine)
                     Column(Modifier.weight(1f)) {
@@ -240,7 +255,7 @@ private fun TablePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>)
 }
 
 @Composable
-private fun SchedulePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>) {
+private fun SchedulePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>, links: Links) {
     var filter by remember { mutableStateOf("gesamt") }
     var state by remember { mutableStateOf<Result<List<GroupMeeting>>?>(null) }
     LaunchedEffect(g, filter) { state = null; state = clickTt.schedule(g, filter) }
@@ -256,10 +271,23 @@ private fun SchedulePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<Strin
         item { Loaded(state) { } }
         items((state as? Result.Ok)?.value.orEmpty()) { m ->
             val mine = m.homeId in own || m.awayId in own
-            AppCard {
+            val running = meetingRunning(m)
+            val report = m.meetingId?.let { id ->
+                ReportLink(
+                    url = Spieltag.reportUrl(g.association, g.season, g.groupId, id),
+                    title = "${m.home} gegen ${m.away}",
+                    running = running,
+                    home = m.homeId?.let { TeamRef(g, it, m.home, m.homeClubNr) },
+                    away = m.awayId?.let { TeamRef(g, it, m.away, m.awayClubNr) },
+                )
+            }
+            AppCard(onClick = report?.let { r -> { links.report(r) } }) {
                 Text(formatShort(m.date), style = MaterialTheme.typography.bodySmall, color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${m.home} – ${m.away}", style = MaterialTheme.typography.titleMedium)
-                m.result?.let { Pill(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    m.result?.let { Pill(it) }
+                    if (running) Pill(if (m.live) "LIVE" else "läuft", color = MaterialTheme.colorScheme.primaryContainer, textColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
             }
         }
         item { Spacer(Modifier.height(16.dp)) }
@@ -267,13 +295,21 @@ private fun SchedulePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<Strin
 }
 
 private fun formatShort(iso: String?): String {
-    val d = iso?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return iso.orEmpty()
-    val time = iso.drop(11).take(5)
-    return "%02d.%02d.%02d".format(d.dayOfMonth, d.monthValue, d.year % 100) + if (time.length == 5) " $time" else ""
+    val d = MatchTime.day(iso) ?: return iso.orEmpty()
+    return "%02d.%02d.%02d".format(d.dayOfMonth, d.monthValue, d.year % 100) + (MatchTime.time(iso)?.let { " $it" }.orEmpty())
+}
+
+/** Wie [Spieltag.isRunning], für ein Spiel aus dem Spielplan der Gruppe. */
+private fun meetingRunning(m: GroupMeeting): Boolean {
+    if (m.live) return true
+    if (m.complete || m.state == "done") return false
+    val start = MatchTime.local(m.date) ?: return false
+    val now = MatchTime.now()
+    return !now.isBefore(start) && now.isBefore(start.plusHours(Spieltag.RUNNING_HOURS))
 }
 
 @Composable
-private fun RankingPage(clickTt: ClickTtRepository, g: GroupRef) {
+private fun RankingPage(clickTt: ClickTtRepository, g: GroupRef, links: Links) {
     var state by remember { mutableStateOf<Result<List<BalanceRow>>?>(null) }
     LaunchedEffect(g) { state = clickTt.ranking(g) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -281,7 +317,8 @@ private fun RankingPage(clickTt: ClickTtRepository, g: GroupRef) {
         item { InfoText(g.name) }
         item { Loaded(state) { } }
         items((state as? Result.Ok)?.value.orEmpty()) { r ->
-            AppCard {
+            val team = r.teamId.takeIf { it.isNotBlank() }?.let { TeamRef(g, it, r.team, r.clubNr) }
+            AppCard(onClick = if (r.playerId.startsWith("NU")) ({ links.player(PlayerLink(r.playerId, r.name, clubNr = r.clubNr, team = team)) }) else null) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     RankBadge(r.rank)
                     Column(Modifier.weight(1f)) {
@@ -313,84 +350,31 @@ private fun PickTeamPage(clickTt: ClickTtRepository, g: GroupRef, onPick: (Strin
     }
 }
 
+/** TTR-Rangliste der Gruppe: alle gemeldeten Spieler aller Mannschaften, umschaltbar zwischen TTR und QTTR. */
 @Composable
-private fun TeamPlayersPage(clickTt: ClickTtRepository, g: GroupRef, teamId: String, teamName: String) {
-    var state by remember { mutableStateOf<Result<List<PlayerLine>>?>(null) }
-    val open = remember { mutableStateListOf<String>() }
-    LaunchedEffect(g, teamId) { state = clickTt.teamPlayers(g, teamId) }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { ScreenTitle(teamName) }
-        item { Loaded(state) { } }
-        items((state as? Result.Ok)?.value.orEmpty()) { p ->
-            val expanded = p.playerId in open
-            AppCard(onClick = { if (expanded) open.remove(p.playerId) else open.add(p.playerId) }) {
-                Text("${p.position}  ${p.name}", style = MaterialTheme.typography.titleMedium)
-                if (expanded) {
-                    Text("Einsätze: ${p.appearances}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Gesamt: ${p.won}:${p.lost}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    p.perOpponent.forEach { o -> Text("Gegen Position ${o.opponentRank}: ${o.won}:${o.lost}", style = MaterialTheme.typography.bodyMedium) }
-                }
-            }
-        }
-        item { Spacer(Modifier.height(16.dp)) }
-    }
-}
-
-private data class TtrEntry(val name: String, val team: String, val value: Int, val isTtr: Boolean)
-
-@Composable
-private fun TtrRankingPage(clickTt: ClickTtRepository, teams: TeamRepository, players: PlayerRepository, g: GroupRef) {
+private fun TtrRankingPage(clickTt: ClickTtRepository, teams: TeamRepository, players: PlayerRepository, g: GroupRef, links: Links) {
     var progress by remember { mutableStateOf("Lade Mannschaften …") }
     var failed by remember { mutableStateOf<String?>(null) }
-    val entries = remember { mutableStateListOf<TtrEntry>() }
+    val entries = remember { mutableStateListOf<RankEntry>() }
     LaunchedEffect(g) {
         entries.clear()
         val table = clickTt.table(g)
         if (table !is Result.Ok) { failed = (table as? Result.Failed)?.message ?: "Bitte zuerst anmelden."; return@LaunchedEffect }
-        val members = table.value.rows.flatMap { row ->
-            ((teams.players(row.teamId) as? Result.Ok)?.value.orEmpty()).filter { it.nuId != null }.map { row.teamName to it }
+        val seeds = table.value.rows.flatMap { row ->
+            val ref = TeamRef(g, row.teamId, row.teamName)
+            ((teams.players(row.teamId) as? Result.Ok)?.value.orEmpty())
+                .mapNotNull { m -> m.nuId?.let { RankEntry(it, m.displayName, row.teamName, null, null, null, ref) } }
         }
-        val gate = Semaphore(5)
-        var done = 0
-        run {
-            members.map { (team, m) ->
-                async {
-                    gate.withPermit {
-                        val r = players.ratings(m.nuId!!)
-                        if (r is RatingOutcome.Values) {
-                            val v = r.ttr ?: r.qttr
-                            if (v != null) entries.add(TtrEntry(m.displayName, team, v, r.ttr != null))
-                        }
-                        done++
-                        progress = "Lade Werte: $done von ${members.size}"
-                    }
-                }
-            }.awaitAll()
-        }
+        loadRatings(players, seeds, onEntry = { entries.add(it) }) { done, total -> progress = "Lade Werte: $done von $total" }
         progress = ""
     }
-    val sorted = entries.sortedByDescending { it.value }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { ScreenTitle("TTR-Rangliste") }
         item { InfoText(g.name) }
+        item { RatingModeChips() }
         failed?.let { item { InfoText(it) } }
         if (progress.isNotEmpty() && failed == null) item { InfoText(progress) }
-        items(sorted.size) { i ->
-            val e = sorted[i]
-            AppCard {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RankBadge(i + 1)
-                    Column(Modifier.weight(1f)) {
-                        Text(e.name, style = MaterialTheme.typography.titleMedium)
-                        Text(e.team, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(e.value.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        if (!e.isTtr) Text("Q-TTR", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
+        rankingItems(entries, RatingModeState.mode, links.player)
         item { Spacer(Modifier.height(16.dp)) }
     }
 }

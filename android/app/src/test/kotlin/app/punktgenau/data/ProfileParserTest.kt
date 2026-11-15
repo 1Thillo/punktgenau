@@ -31,6 +31,22 @@ class ProfileParserTest {
     }
 }
 
+class QttrFallbackTest {
+    /** Antwort wie am 15.11.2026: `vq_ttr` leer, der Quartalswert steht in `ttr_last_fixed`. */
+    private val body = """{"ttr":1381,"event":[],"vq_ttr":null,"max_ttr":1398,"club_name":"SV Ruitsch-Kerben","ttr_last_fixed":"1344","ttr_last_fixed_date":"2026-08-11"}"""
+
+    @org.junit.Test fun qttrAusZuletztFixiertemWert() =
+        org.junit.Assert.assertEquals(1381 to 1344, ProfileParser.parseHistory(body))
+
+    @org.junit.Test fun vqTtrHatVorrang() =
+        org.junit.Assert.assertEquals(1300 to 1290, ProfileParser.parseHistory("""{"ttr":1300,"vq_ttr":1290,"ttr_last_fixed":"1250"}"""))
+
+    @org.junit.Test fun vereinsnameAusVerlauf() {
+        org.junit.Assert.assertEquals("SV Ruitsch-Kerben", ProfileParser.clubName(body))
+        org.junit.Assert.assertNull(ProfileParser.clubName("""{"ttr":1,"club_name":null}"""))
+    }
+}
+
 class RatingOnTest {
     private val body = """{"ttr":1300,"vq_ttr":1290,"event":[
         {"event_date_time":"2026-10-29 19:00:00","ttr_before":1280,"ttr_after":1288},
