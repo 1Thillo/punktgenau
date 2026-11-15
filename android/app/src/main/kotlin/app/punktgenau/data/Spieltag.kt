@@ -59,6 +59,19 @@ object Spieltag {
         return !now.isBefore(start) && now.isBefore(start.plusHours(RUNNING_HOURS))
     }
 
+    /** Die eigene Mannschaft, wie sie in der Spieltag-Ansicht und im Kalender benannt wird. */
+    fun ownRef(team: TeamInfo, a: Appointment): TeamRef = TeamRef(
+        GroupRef(
+            team.organization ?: "RTTVR",
+            team.season ?: Season.label(LocalDate.now()),
+            a.leagueId ?: team.groupId.orEmpty(),
+            team.league ?: team.name,
+        ),
+        team.id,
+        team.club?.let { "$it – ${team.name}" } ?: team.name,
+        a.ownClubNr,
+    )
+
     /**
      * Verweis auf den Spielbericht eines Termins aus dem Spielplan von [own], mit beiden Mannschaften.
      * Null, wenn der Spielplan keine Spielkennung nennt. Ein Ergebnis ist dafür nicht nötig: die Kennung
