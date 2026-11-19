@@ -2,7 +2,7 @@
 
 Eine schlanke Android-App für Tischtennis-Spielerinnen und -Spieler in Deutschland. Sie zeigt TTR-Werte, rechnet TTR-Änderungen, zeigt Spieltage und Spielberichte und behält die Anmeldung dauerhaft.
 
-Die App ist ein privates Projekt und **nicht mit mytischtennis.de verbunden**. Sie nutzt die öffentlichen Seiten und Daten der Website und das Konto der angemeldeten Person. Sie prüft keinen Abo-Status und umgeht keine Sperren oder Verifizierungen.
+Die App ist ein privates Projekt und **nicht mit mytischtennis.de verbunden**. Sie nutzt die öffentlichen Seiten und Daten der Website und das Konto der angemeldeten Person. 
 
 ## Funktionen
 - Anmeldung im eingebauten Browserfenster, die nach dem Neustart bleibt. Das Passwort wird nicht gespeichert.
