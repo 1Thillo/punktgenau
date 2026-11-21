@@ -1,12 +1,14 @@
 package app.punktgenau.ui
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.font.FontWeight
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
@@ -19,7 +21,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,15 +52,11 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
     BackHandler(onBack = onClose)
 
     val page = (state as? Result.Ok)?.value
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BackBar(onClose)
         ScreenTitle("Wechselliste")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(incoming, { incoming = true }, { Text("Eingehend") })
-            FilterChip(!incoming, { incoming = false }, { Text("Ausgehend") })
-        }
+        Segmented(listOf("Eingehend", "Ausgehend"), if (incoming) 0 else 1) { incoming = it == 0 }
         page?.periods?.takeIf { it.isNotEmpty() }?.let { periods ->
-            Spacer(Modifier.height(8.dp))
             // Einzeilig und horizontal scrollbar: umbrechende Chips haben die Kopfzeile aufgebläht.
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(period == null, { period = null }, { Text("Standard", maxLines = 1, softWrap = false) })
@@ -68,22 +65,22 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = typed,
-            onValueChange = { typed = it },
-            label = { Text("Name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(6.dp))
-        Button({ applied = typed }, Modifier.fillMaxWidth()) { Text("Suchen") }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = typed,
+                onValueChange = { typed = it },
+                label = { Text("Name") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            Button({ applied = typed }, Modifier.padding(top = 6.dp)) { Text("Suchen") }
+        }
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (val s = state) {
                 null -> item { LoadingBox() }
                 is Result.Ok -> {
                     val shown = s.value.transfers.filter { applied.isBlank() || it.name.contains(applied.trim(), ignoreCase = true) }
-                    item { InfoText("${shown.size} Wechsel") }
+                    item { SectionLabel("${shown.size} Wechsel") }
                     items(shown) { t: Transfer -> TransferCard(t) }
                 }
                 Result.NeedsLogin -> item { InfoText("Bitte zuerst anmelden.") }
@@ -97,15 +94,28 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
 @Composable
 private fun TransferCard(t: Transfer) {
     AppCard {
-        Text(t.name, style = MaterialTheme.typography.titleMedium)
-        Text(
-            "${t.oldClub.ifBlank { "–" }} → ${t.newClub.ifBlank { "–" }}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (t.parts.isNotEmpty()) {
-            Text(t.parts.joinToString(" · ") { partLabel(it) }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            LetterBadge(t.name)
+            Text(t.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
         }
+        // Von und Nach untereinander, damit lange Vereinsnamen lesbar bleiben.
+        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            ClubLine("Von", t.oldClub.ifBlank { "–" }, MaterialTheme.colorScheme.onSurfaceVariant)
+            ClubLine("Nach", t.newClub.ifBlank { "–" }, MaterialTheme.colorScheme.primary)
+        }
+        if (t.parts.isNotEmpty()) {
+            Row(Modifier.padding(top = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                t.parts.forEach { Pill(partLabel(it)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClubLine(label: String, club: String, color: androidx.compose.ui.graphics.Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(48.dp))
+        Text(club, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = color)
     }
 }
 

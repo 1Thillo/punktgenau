@@ -1,5 +1,9 @@
 package app.punktgenau.ui
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -73,14 +77,25 @@ fun FavoritesScreen(store: FavoriteStore, players: PlayerRepository, onOpen: (Pl
         }
     }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BackBar(onClose)
         ScreenTitle("Favoriten")
+        HeroCard {
+            Text("GEMERKT", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(favorites.size.toString(), fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    if (favorites.size == 1) "Person" else "Personen",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+            }
+        }
         if (favorites.isEmpty()) {
             InfoText("Noch keine Favoriten. Auf der Seite einer Person „Als Favorit merken“ tippen.")
         }
-        Spacer(Modifier.height(8.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(favorites.toList(), key = { it.nuId }) { p ->
                 FavoriteCard(
                     player = p,
@@ -103,7 +118,8 @@ private fun FavoriteCard(player: PlayerLink, outcome: PlayerHistoryOutcome?, onO
     val main = history?.ttr ?: history?.qttr
     AppCard {
         Column(Modifier.fillMaxWidth().clickable(onClickLabel = "${player.name} ansehen", onClick = onOpen)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                LetterBadge(player.name)
                 Column(Modifier.weight(1f)) {
                     Text(player.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     val sub = listOfNotNull(player.club ?: history?.clubName, player.team?.name).distinct().joinToString(" · ")
@@ -113,7 +129,7 @@ private fun FavoriteCard(player: PlayerLink, outcome: PlayerHistoryOutcome?, onO
                 }
                 if (main != null) {
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(main.toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        Text(main.toString(), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         Text(
                             if (history?.ttr != null) "TTR" else "Q-TTR",
                             style = MaterialTheme.typography.bodySmall,
@@ -128,7 +144,14 @@ private fun FavoriteCard(player: PlayerLink, outcome: PlayerHistoryOutcome?, onO
                 is PlayerHistoryOutcome.Failed -> InfoText(outcome.message)
                 is PlayerHistoryOutcome.Ok -> {
                     val recent = outcome.history.events.sortedBy { it.date }.takeLast(SPARK_EVENTS)
-                    if (recent.size >= 2) Sparkline(recent, Modifier.fillMaxWidth().padding(top = 10.dp).height(44.dp))
+                    if (recent.size >= 2) {
+                        Box(
+                            Modifier.fillMaxWidth().padding(top = 12.dp).clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)).padding(horizontal = 8.dp, vertical = 6.dp),
+                        ) {
+                            Sparkline(recent, Modifier.fillMaxWidth().height(44.dp))
+                        }
+                    }
                     Row(
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -144,7 +167,7 @@ private fun FavoriteCard(player: PlayerLink, outcome: PlayerHistoryOutcome?, onO
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onRemove) { Text("Entfernen") }
+            TextButton(onRemove) { Text("Entfernen", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }

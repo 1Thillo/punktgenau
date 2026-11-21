@@ -3,7 +3,6 @@ package app.punktgenau.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,10 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -25,9 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.punktgenau.data.ClubRepository
 import app.punktgenau.data.ClubTeam
@@ -66,55 +61,55 @@ fun FollowScreen(clubs: ClubRepository, store: FollowStore, onClose: () -> Unit)
         followed.removeAll { it.id == id }
     }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BackBar(onClose)
         ScreenTitle("Mannschaften merken")
-        InfoText("Den Vereinsnamen genau so eingeben, wie er in click-TT steht, zum Beispiel \"DJK Mayen\".")
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("Vereinsname") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Button(
-            {
-                scope.launch {
-                    busy = true
-                    status = null
-                    found.clear()
-                    val ref = clubs.findClub(query)
-                    if (ref == null) {
-                        status = "Kein Verein mit diesem Namen gefunden."
-                    } else {
-                        when (val r = clubs.load(ref.clubNr, ref.association, Season.label(LocalDate.now()))) {
-                            is Result.Ok -> {
-                                if (r.value.teams.isEmpty()) status = "Der Verein hat keine Mannschaften in dieser Saison."
-                                foundClub = r.value.info?.name ?: query.trim()
-                                found.addAll(r.value.teams)
+        AppCard {
+            InfoText("Den Vereinsnamen genau so eingeben, wie er in click-TT steht, zum Beispiel \"DJK Mayen\".")
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Vereinsname") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                {
+                    scope.launch {
+                        busy = true
+                        status = null
+                        found.clear()
+                        val ref = clubs.findClub(query)
+                        if (ref == null) {
+                            status = "Kein Verein mit diesem Namen gefunden."
+                        } else {
+                            when (val r = clubs.load(ref.clubNr, ref.association, Season.label(LocalDate.now()))) {
+                                is Result.Ok -> {
+                                    if (r.value.teams.isEmpty()) status = "Der Verein hat keine Mannschaften in dieser Saison."
+                                    foundClub = r.value.info?.name ?: query.trim()
+                                    found.addAll(r.value.teams)
+                                }
+                                else -> status = "Die Mannschaften konnten nicht geladen werden."
                             }
-                            else -> status = "Die Mannschaften konnten nicht geladen werden."
                         }
+                        busy = false
                     }
-                    busy = false
-                }
-            },
-            Modifier.fillMaxWidth(),
-            enabled = query.isNotBlank() && !busy,
-        ) { Text("Suchen") }
+                },
+                Modifier.fillMaxWidth(),
+                enabled = query.isNotBlank() && !busy,
+            ) { Text("Suchen") }
+        }
         status?.let { InfoText(it) }
-        Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (found.isNotEmpty()) {
-                item { SectionLabel("Mannschaften des Vereins") }
+                item { SectionLabel("Mannschaften des Vereins (${found.size})") }
                 items(found) { t ->
                     val on = followed.any { it.id == t.teamId }
                     TeamToggleRow(label(foundClub, t.name), t.league, on) { toggle(t) }
                 }
             }
             if (followed.isNotEmpty()) {
-                item { SectionLabel("Gemerkt") }
+                item { SectionLabel("Gemerkt (${followed.size})") }
                 items(followed.toList()) { t ->
                     TeamToggleRow(label(t.club, t.name), t.league.orEmpty(), true) { remove(t.id) }
                 }
@@ -129,19 +124,16 @@ private fun label(club: String?, team: String): String = if (club.isNullOrBlank(
 
 @Composable
 private fun TeamToggleRow(name: String, league: String, followed: Boolean, onToggle: () -> Unit) {
-    AppCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                if (league.isNotBlank()) {
-                    Text(league, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+    ListCard(
+        title = name,
+        subtitle = league.ifBlank { null },
+        leading = { LetterBadge(if (followed) "✓" else name) },
+        trailing = {
             if (followed) {
-                OutlinedButton(onToggle) { Text("Entfernen") }
+                AccentAction("Entfernen", onToggle)
             } else {
                 Button(onToggle) { Text("Merken") }
             }
-        }
-    }
+        },
+    )
 }

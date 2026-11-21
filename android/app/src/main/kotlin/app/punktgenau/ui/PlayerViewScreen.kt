@@ -1,17 +1,19 @@
 package app.punktgenau.ui
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -107,47 +109,46 @@ fun PlayerViewScreen(
     }
     BackHandler(onBack = onClose)
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
-        ScreenTitle("Sicht von ${player.name}")
-        clubName?.let { InfoText(it) }
-        OutlinedButton(
-            {
-                if (isFavorite) {
-                    favorites.remove(player.nuId)
-                } else {
-                    val team = player.team ?: (teamSearch as? TeamSearch.Found)?.teams?.singleOrNull()
-                    favorites.add(player.copy(club = clubName, clubNr = clubNr, team = team))
-                }
-                isFavorite = !isFavorite
-            },
-            Modifier.fillMaxWidth(),
-        ) { Text(if (isFavorite) "★ Aus Favoriten entfernen" else "☆ Als Favorit merken") }
-        clubNr?.let { nr ->
-            OutlinedButton({ links.club(nr) }, Modifier.fillMaxWidth()) { Text("Verein ansehen") }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BackBar(onClose) {
+            AccentAction(
+                if (isFavorite) "★ Favorit entfernen" else "☆ Als Favorit merken",
+                {
+                    if (isFavorite) {
+                        favorites.remove(player.nuId)
+                    } else {
+                        val team = player.team ?: (teamSearch as? TeamSearch.Found)?.teams?.singleOrNull()
+                        favorites.add(player.copy(club = clubName, clubNr = clubNr, team = team))
+                    }
+                    isFavorite = !isFavorite
+                },
+            )
         }
-        val known = player.team
-        if (known != null) {
-            OutlinedButton({ links.team(known) }, Modifier.fillMaxWidth()) { Text("Mannschaft: ${known.name}") }
-        } else {
-            val nr = clubNr
-            when (val s = teamSearch) {
-                TeamSearch.Idle -> if (nr != null) {
-                    OutlinedButton(
-                        { teamSearch = TeamSearch.Busy; scope.launch { teamSearch = findTeams(clubs, teams, nr, association, player.nuId) } },
-                        Modifier.fillMaxWidth(),
-                    ) { Text("Mannschaft suchen") }
-                }
-                TeamSearch.Busy -> InfoText("Suche in den Aufstellungen des Vereins …")
-                is TeamSearch.Failed -> InfoText(s.message)
-                is TeamSearch.Found -> s.teams.forEach { t ->
-                    OutlinedButton({ links.team(t) }, Modifier.fillMaxWidth()) { Text("Mannschaft: ${t.name} (${t.group.name})") }
+        ScreenTitle("Sicht von ${player.name}")
+        // Wege zu Verein und Mannschaft: eine waagerecht scrollbare Reihe, damit der Verlauf Platz behält.
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            clubNr?.let { nr -> AccentAction("Verein ›", { links.club(nr) }) }
+            val known = player.team
+            if (known != null) {
+                AccentAction("Mannschaft: ${known.name} ›", { links.team(known) })
+            } else {
+                val nr = clubNr
+                when (val s = teamSearch) {
+                    TeamSearch.Idle -> if (nr != null) {
+                        AccentAction("Mannschaft suchen", { teamSearch = TeamSearch.Busy; scope.launch { teamSearch = findTeams(clubs, teams, nr, association, player.nuId) } })
+                    }
+                    TeamSearch.Busy -> InfoText("Suche in den Aufstellungen des Vereins …")
+                    is TeamSearch.Failed -> InfoText(s.message)
+                    is TeamSearch.Found -> s.teams.forEach { t ->
+                        AccentAction("Mannschaft: ${t.name} (${t.group.name}) ›", { links.team(t) })
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        InfoText("Öffentliche Werte dieses Spielers. Du bist dabei nicht als er angemeldet.")
-        Spacer(Modifier.height(8.dp))
         when (val o = outcome) {
             null -> LoadingBox()
             PlayerHistoryOutcome.NeedsLogin -> InfoText("Bitte zuerst anmelden.")
@@ -155,16 +156,22 @@ fun PlayerViewScreen(
             is PlayerHistoryOutcome.Ok -> {
                 val h = o.history
                 val value = h.ttr ?: h.qttr
-                AppCard {
-                    Text(if (h.ttr != null) "TTR" else "Q-TTR", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(value?.toString() ?: "–", fontSize = 56.sp, fontWeight = FontWeight.Bold)
-                    h.qttr?.takeIf { h.ttr != null }?.let { Text("Q-TTR $it", style = MaterialTheme.typography.bodyMedium) }
-                    if (value != null) {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton({ onUseInCalculator(value) }, Modifier.fillMaxWidth()) { Text("Im Rechner als mein Wert nehmen") }
+                HeroCard {
+                    Text(
+                        (if (h.ttr != null) "TTR" else "Q-TTR") + (clubName?.let { " · ${it.uppercase()}" }.orEmpty()),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.85f),
+                        maxLines = 1,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text(value?.toString() ?: "–", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Column(Modifier.weight(1f)) {
+                            h.qttr?.takeIf { h.ttr != null }?.let { HeroStat("Q-TTR", it.toString()) }
+                        }
+                        if (value != null) HeroChoice("Im Rechner als\nmein Wert", { onUseInCalculator(value) })
                     }
+                    Text("Öffentliche Werte dieses Spielers. Du bist dabei nicht als er angemeldet.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
                 }
-                Spacer(Modifier.height(10.dp))
                 // Derselbe Verlaufs-Screen wie beim eigenen Konto: Spiele und Diagramm.
                 HistoryScreen(
                     events = h.events, loggedIn = true, modifier = Modifier.weight(1f).fillMaxWidth(), showTitle = false,

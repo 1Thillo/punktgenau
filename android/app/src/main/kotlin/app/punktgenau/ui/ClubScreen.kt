@@ -1,5 +1,7 @@
 package app.punktgenau.ui
 
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,9 +15,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.punktgenau.data.Club
 import app.punktgenau.data.ClubRepository
 import app.punktgenau.data.ClubTeam
@@ -79,36 +78,39 @@ fun ClubScreen(
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
+        BackBar(onClose)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { ScreenTitle("Verein") }
             item {
                 when (val s = state) {
                     null -> LoadingBox()
-                    is Result.Ok -> {
-                        ScreenTitle(s.value.info?.name ?: "Verein")
-                        s.value.info?.region?.let { InfoText(it) }
+                    is Result.Ok -> HeroCard {
+                        Text("VEREIN", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+                        Text(s.value.info?.name ?: "Verein", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                        s.value.info?.region?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f)) }
+                        HeroStrip {
+                            HeroStat("Mannschaften", s.value.teams.size.toString())
+                            HeroStat("Spiellokale", (s.value.info?.venues?.size ?: 0).toString())
+                            HeroStat("Nr.", clubNr)
+                        }
+                        HeroChoice("Vereinsrangliste", { ranking = true }, Modifier.fillMaxWidth().padding(top = 6.dp))
                     }
                     Result.NeedsLogin -> InfoText("Bitte zuerst anmelden.")
                     is Result.Failed -> InfoText(s.message)
                 }
             }
             club?.info?.let { info ->
+                item { SectionLabel("Kontakt") }
                 item {
                     AppCard {
-                        SectionLabel("Kontakt")
                         info.contactName?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
                         info.contactPhone?.let { Text(it.trim(), style = MaterialTheme.typography.bodyMedium) }
-                        info.contactEmail?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                        info.contactEmail?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
                         if (info.venues.isNotEmpty()) {
                             SectionLabel(if (info.venues.size == 1) "Spiellokal" else "Spiellokale")
                             info.venues.forEach { VenueRow(it) }
                         }
                     }
-                }
-            }
-            if (club != null) {
-                item {
-                    OutlinedButton({ ranking = true }, Modifier.fillMaxWidth()) { Text("Vereinsrangliste") }
                 }
             }
             item { SectionLabel("Mannschaften") }
@@ -138,11 +140,15 @@ private fun TeamCard(clickTt: ClickTtRepository, group: GroupRef, team: ClubTeam
         loading = false
     }
     AppCard(onClick = onOpenTeam) {
-        Text(team.name, style = MaterialTheme.typography.titleMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(team.league, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-            TextButton(onOpenLeague) { Text("Liga") }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            LetterBadge(team.name)
+            Column(Modifier.weight(1f)) {
+                Text(team.name, style = MaterialTheme.typography.titleMedium)
+                Text(team.league, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            AccentAction("Liga", onOpenLeague)
         }
+        HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
         val d = details
         when {
             loading -> InfoText("Lade Kontakt und Spiellokal …")
@@ -174,12 +180,12 @@ private fun ContactLine(c: TeamContact) {
 @Composable
 private fun VenueRow(v: Venue) {
     val context = LocalContext.current
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(Modifier.weight(1f)) {
             if (v.name.isNotBlank()) Text(v.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(v.query, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        TextButton({ openNavigation(context, v.query) }) { Text("Navigation") }
+        AccentAction("Navigation ↗", { openNavigation(context, v.query) })
     }
 }
 
@@ -216,7 +222,7 @@ private fun ClubRankingPage(teams: TeamRepository, players: PlayerRepository, cl
         progress = ""
     }
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück zum Verein") }
+        BackBar(onClose, label = "Zurück zum Verein")
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { ScreenTitle("Vereinsrangliste") }
             item { InfoText("Spieler aus den Mannschaftsaufstellungen des Vereins.") }

@@ -1,9 +1,12 @@
 package app.punktgenau.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,9 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -130,125 +131,131 @@ fun SearchScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ScreenTitle("Suche")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(!showAdvanced, { showAdvanced = false }, { Text("Name") })
-            FilterChip(showAdvanced, { showAdvanced = true }, { Text("Erweitert") })
-        }
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { ScreenTitle("Suche") }
+        item { Segmented(listOf("Name", "Erweitert"), if (showAdvanced) 1 else 0) { showAdvanced = it == 1 } }
 
         if (!showAdvanced) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                label = { Text("Spieler suchen (Name)") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { runSearch() }),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button({ runSearch() }, enabled = !busy && query.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Suchen") }
-            if (recent.isNotEmpty()) {
-                // Letzte Suchen zum Antippen; „Verlauf löschen“ leert die Liste auf diesem Gerät.
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    recent.forEach { term ->
-                        AssistChip(onClick = { query = term; runSearch() }, label = { Text(term) })
-                    }
+            item {
+                AppCard {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = { Text("Spieler suchen (Name)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { runSearch() }),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button({ runSearch() }, enabled = !busy && query.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Suchen") }
                 }
-                TextButton(
-                    onClick = { history.clear(); recent = emptyList() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Verlauf löschen") }
             }
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(gender == "all", { gender = "all" }, { Text("Alle") })
-                FilterChip(gender == "m", { gender = "m" }, { Text("Männer") })
-                FilterChip(gender == "w", { gender = "w" }, { Text("Frauen") })
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(currentTtr, { currentTtr = true }, { Text("Aktuell (TTR)") })
-                FilterChip(!currentTtr, { currentTtr = false }, { Text("Quartal (Q-TTR)") })
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = ttrMinText,
-                    onValueChange = { ttrMinText = it.filter { c -> c.isDigit() } },
-                    label = { Text("TTR von") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = ttrMaxText,
-                    onValueChange = { ttrMaxText = it.filter { c -> c.isDigit() } },
-                    label = { Text("TTR bis") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            OutlinedTextField(
-                value = clubText,
-                onValueChange = { clubText = it.filter { c -> c.isDigit() } },
-                label = { Text("Vereinsnummer (optional)") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button({ runAdvanced(1) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Filtern") }
-        }
-
-        if (busy) CircularProgressIndicator()
-        message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-
-        selected?.let { sel ->
-            AppCard {
-                Text(sel.player.displayName, style = MaterialTheme.typography.titleLarge)
-                sel.player.club?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                when (val o = sel.outcome) {
-                    null -> CircularProgressIndicator()
-                    is RatingOutcome.Failed -> Text(o.message)
-                    is RatingOutcome.Values -> {
-                        val value = o.ttr ?: o.qttr
-                        Text(value?.toString() ?: "–", fontSize = 56.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            when {
-                                o.ttr != null -> "TTR" + (o.qttr?.let { " · Q-TTR $it" } ?: "")
-                                o.qttr != null -> "Q-TTR (TTR wird vom Server nicht geliefert)"
-                                else -> "Keine Werte erhalten"
-                            },
-                        )
-                        if (value != null) OutlinedButton({ onAddToCalculator(value) }) { Text("Zum Rechner hinzufügen") }
-                        if (sel.player.nuId != null) {
-                            OutlinedButton({ onViewPlayer(sel.player) }, Modifier.fillMaxWidth()) { Text("Sicht von ${sel.player.firstName}") }
+            if (recent.isNotEmpty()) {
+                item {
+                    // Letzte Suchen zum Antippen; „Verlauf löschen“ leert die Liste auf diesem Gerät.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                        Box(Modifier.weight(1f).padding(bottom = 10.dp)) { SectionLabel("Zuletzt gesucht") }
+                        TextButton(onClick = { history.clear(); recent = emptyList() }) { Text("Verlauf löschen") }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        recent.forEach { term ->
+                            AssistChip(onClick = { query = term; runSearch() }, label = { Text(term) })
                         }
                     }
-                    RatingOutcome.NeedsLogin -> Unit
+                }
+            }
+        } else {
+            item {
+                AppCard {
+                    Text("Geschlecht", style = MaterialTheme.typography.labelLarge)
+                    val genders = listOf("all", "m", "w")
+                    Segmented(listOf("Alle", "Männer", "Frauen"), genders.indexOf(gender)) { gender = genders[it] }
+                    Spacer(Modifier.height(6.dp))
+                    Text("Wert", style = MaterialTheme.typography.labelLarge)
+                    Segmented(listOf("Aktuell (TTR)", "Quartal (Q-TTR)"), if (currentTtr) 0 else 1) { currentTtr = it == 0 }
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = ttrMinText,
+                            onValueChange = { ttrMinText = it.filter { c -> c.isDigit() } },
+                            label = { Text("TTR von") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = ttrMaxText,
+                            onValueChange = { ttrMaxText = it.filter { c -> c.isDigit() } },
+                            label = { Text("TTR bis") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    OutlinedTextField(
+                        value = clubText,
+                        onValueChange = { clubText = it.filter { c -> c.isDigit() } },
+                        label = { Text("Vereinsnummer (optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button({ runAdvanced(1) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Filtern") }
                 }
             }
         }
 
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(hits) { p ->
-                AppCard(onClick = { select(p) }) {
-                    Text(p.displayName, style = MaterialTheme.typography.titleMedium)
-                    p.club?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                }
-            }
-            if (showAdvanced && hits.isNotEmpty()) {
-                item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        OutlinedButton({ runAdvanced(page - 1) }, enabled = !busy && page > 1) { Text("Zurück") }
-                        Text("Seite $page von $pages", style = MaterialTheme.typography.bodyMedium)
-                        OutlinedButton({ runAdvanced(page + 1) }, enabled = !busy && page < pages) { Text("Weiter") }
+        if (busy) item { LoadingBox() }
+        message?.let { m -> item { InfoText(m) } }
+
+        if (hits.isNotEmpty()) item { SectionLabel(if (hits.size == 1) "1 Treffer" else "${hits.size} Treffer") }
+        items(hits) { p ->
+            ListCard(p.displayName, p.club, onClick = { select(p) }, leading = { LetterBadge(p.displayName) })
+            // Die gewählte Person klappt direkt unter ihrer Zeile als Hero-Fläche auf.
+            val sel = selected
+            if (sel != null && sel.player == p) {
+                Spacer(Modifier.height(10.dp))
+                HeroCard {
+                    Text("AUSGEWÄHLT", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+                    Text(sel.player.displayName, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                    sel.player.club?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f)) }
+                    when (val o = sel.outcome) {
+                        null -> CircularProgressIndicator(color = Color.White)
+                        is RatingOutcome.Failed -> Text(o.message, color = Color.White)
+                        is RatingOutcome.Values -> {
+                            val value = o.ttr ?: o.qttr
+                            Text(value?.toString() ?: "–", fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(
+                                when {
+                                    o.ttr != null -> "TTR" + (o.qttr?.let { " · Q-TTR $it" } ?: "")
+                                    o.qttr != null -> "Q-TTR (TTR wird vom Server nicht geliefert)"
+                                    else -> "Keine Werte erhalten"
+                                },
+                                color = Color.White.copy(alpha = 0.9f),
+                            )
+                            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (value != null) HeroChoice("Zum Rechner hinzufügen", { onAddToCalculator(value) }, Modifier.weight(1f))
+                                if (sel.player.nuId != null) HeroChoice("Sicht von ${sel.player.firstName}", { onViewPlayer(sel.player) }, Modifier.weight(1f))
+                            }
+                        }
+                        RatingOutcome.NeedsLogin -> Unit
                     }
                 }
             }
         }
+        if (showAdvanced && hits.isNotEmpty()) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    AccentAction("‹ Zurück", { runAdvanced(page - 1) }, enabled = !busy && page > 1)
+                    Text("Seite $page von $pages", style = MaterialTheme.typography.bodyMedium)
+                    AccentAction("Weiter ›", { runAdvanced(page + 1) }, enabled = !busy && page < pages)
+                }
+            }
+        }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }

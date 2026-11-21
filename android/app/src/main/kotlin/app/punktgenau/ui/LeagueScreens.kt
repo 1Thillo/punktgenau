@@ -11,14 +11,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -106,13 +106,13 @@ fun LeagueScreen(
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         if (nav != Nav.Home || onBack != null) {
-            TextButton({ if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) }) { Text("Zurück") }
-        }
-        if (nav == Nav.Home && onOpenTransfers != null) {
-            OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
+            BackBar({ if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) })
         }
         when (val n = nav) {
-            Nav.Home -> LeagueHome(myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onOpenTeam = links.team, onChoose = { nav = Nav.Districts })
+            Nav.Home -> LeagueHome(
+                myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onOpenTeam = links.team, onChoose = { nav = Nav.Districts },
+                onOpenTransfers = onOpenTransfers,
+            )
             Nav.Districts -> DistrictPage(clickTt, association, season) { nav = Nav.Leagues(it) }
             is Nav.Leagues -> LeaguePickPage(clickTt, association, season, n.district) { g ->
                 nav = Nav.Hub(GroupRef(association, season, g.groupId, g.name))
@@ -141,26 +141,55 @@ private fun <T> Loaded(state: Result<T>?, content: @Composable (T) -> Unit) {
 }
 
 @Composable
-private fun LeagueHome(myTeams: List<TeamInfo>, loggedIn: Boolean, onOpen: (GroupRef) -> Unit, onOpenTeam: (TeamRef) -> Unit, onChoose: () -> Unit) {
+private fun LeagueHome(
+    myTeams: List<TeamInfo>,
+    loggedIn: Boolean,
+    onOpen: (GroupRef) -> Unit,
+    onOpenTeam: (TeamRef) -> Unit,
+    onChoose: () -> Unit,
+    onOpenTransfers: (() -> Unit)?,
+) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { ScreenTitle("Liga") }
-        item { SectionLabel("Meine Ligen") }
-        if (myTeams.isEmpty()) item { InfoText(if (loggedIn) "Lade deine Mannschaften …" else "Anmelden, um deine Ligen zu sehen.") }
-        items(myTeams) { t ->
-            AppCard(onClick = {
-                val org = t.organization; val gid = t.groupId; val s = t.season
-                if (org != null && gid != null && s != null) onOpen(GroupRef(org, s, gid, t.league ?: t.name))
-            }) {
-                Text(t.league ?: t.name, style = MaterialTheme.typography.titleMedium)
-                Text(t.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val org = t.organization; val gid = t.groupId; val s = t.season
-                if (org != null && gid != null && s != null) {
-                    TextButton({ onOpenTeam(TeamRef(GroupRef(org, s, gid, t.league ?: t.name), t.id, t.name)) }) { Text("Mannschaft ansehen") }
-                }
+        item {
+            HeroCard {
+                Text("MEINE LIGEN", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+                Text(
+                    if (myTeams.isEmpty()) "–" else myTeams.size.toString(),
+                    fontSize = 56.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                )
+                Text(
+                    when {
+                        myTeams.isNotEmpty() -> if (myTeams.size == 1) "Mannschaft in dieser Saison" else "Mannschaften in dieser Saison"
+                        loggedIn -> "Lade deine Mannschaften …"
+                        else -> "Anmelden, um deine Ligen zu sehen."
+                    },
+                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f),
+                )
             }
         }
-        item { SectionLabel("Andere Liga") }
-        item { AppCard(onClick = onChoose) { Text("Liga auswählen", style = MaterialTheme.typography.titleMedium) } }
+        if (myTeams.isNotEmpty()) item { SectionLabel("Liga öffnen") }
+        items(myTeams) { t ->
+            val org = t.organization; val gid = t.groupId; val s = t.season
+            ListCard(
+                title = t.league ?: t.name,
+                subtitle = t.name,
+                onClick = { if (org != null && gid != null && s != null) onOpen(GroupRef(org, s, gid, t.league ?: t.name)) },
+                leading = { LetterBadge(t.league ?: t.name) },
+                // Karte öffnet die Liga, die Akzent-Aktion rechts die eigene Mannschaft.
+                trailing = if (org != null && gid != null && s != null) ({
+                    AccentAction("Mannschaft", { onOpenTeam(TeamRef(GroupRef(org, s, gid, t.league ?: t.name), t.id, t.name)) })
+                }) else ({ Chevron() }),
+            )
+        }
+        item { SectionLabel("Entdecken") }
+        item {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ChoiceTile("Liga auswählen", "Bezirk und Spielklasse", onChoose, Modifier.weight(1f).fillMaxHeight())
+                if (onOpenTransfers != null) ChoiceTile("Wechselliste", "Wechsel im Verband", onOpenTransfers, Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
@@ -170,9 +199,11 @@ private fun DistrictPage(clickTt: ClickTtRepository, association: String, season
     LaunchedEffect(association, season) { state = clickTt.districts(association, season) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { ScreenTitle("Bezirk wählen") }
+        item { InfoText("$association · Saison $season") }
         item { Loaded(state) { } }
         val list = (state as? Result.Ok)?.value.orEmpty()
-        items(list) { d -> AppCard(onClick = { onPick(d) }) { Text(d.name, style = MaterialTheme.typography.titleMedium) } }
+        items(list) { d -> ListCard(d.name, onClick = { onPick(d) }, leading = { LetterBadge(d.name) }) }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
@@ -192,44 +223,63 @@ private fun LeaguePickPage(clickTt: ClickTtRepository, association: String, seas
                 items(categories) { c -> FilterChip((category ?: categories.first()) == c, { category = c }, { Text(c) }) }
             }
         }
-        items(shown) { g -> AppCard(onClick = { onPick(g) }) { Text(g.name, style = MaterialTheme.typography.titleMedium) } }
+        if (shown.isNotEmpty()) item { SectionLabel("${shown.size} Spielklassen") }
+        items(shown) { g -> ListCard(g.name, onClick = { onPick(g) }) }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
 @Composable
 private fun HubPage(g: GroupRef, onTable: () -> Unit, onSchedule: () -> Unit, onRanking: () -> Unit, onTeams: () -> Unit, onTtr: () -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { ScreenTitle(g.name) }
-        item { InfoText("Saison ${g.season}") }
-        item { HubTile("Tabelle", "Platzierung, Spiele, Punkte", onTable) }
-        item { HubTile("Spielplan", "Alle Spiele der Gruppe, Vor- und Rückrunde", onSchedule) }
-        item { HubTile("Bilanz-Rangliste", "Beste Spieler nach Bilanz", onRanking) }
-        item { HubTile("Mannschaften", "Rangliste, Spielplan und Bilanzen einer Mannschaft", onTeams) }
-        item { HubTile("TTR-Rangliste", "Alle Spieler der Gruppe nach TTR oder QTTR (lädt einige Sekunden)", onTtr) }
-    }
-}
-
-@Composable
-private fun HubTile(title: String, subtitle: String, onClick: () -> Unit) {
-    AppCard(onClick = onClick) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        item {
+            HeroCard {
+                Text("LIGA · SAISON ${g.season}", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+                Text(g.name, style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                Text(g.association, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+            }
+        }
+        item { SectionLabel("Überblick") }
+        item {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ChoiceTile("Tabelle", "Platzierung, Spiele, Punkte", onTable, Modifier.weight(1f).fillMaxHeight())
+                ChoiceTile("Spielplan", "Vor- und Rückrunde", onSchedule, Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+        item { SectionLabel("Spieler und Mannschaften") }
+        item {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ChoiceTile("Bilanz-Rangliste", "Beste Spieler nach Bilanz", onRanking, Modifier.weight(1f).fillMaxHeight())
+                ChoiceTile("Mannschaften", "Rangliste, Spielplan, Bilanzen", onTeams, Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+        item { ChoiceTile("TTR-Rangliste", "Alle Spieler der Gruppe nach TTR oder QTTR (lädt einige Sekunden)", onTtr, Modifier.fillMaxWidth()) }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
 @Composable
 internal fun RankBadge(rank: Int, highlight: Boolean = false) {
     Surface(
-        shape = CircleShape,
-        color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.size(36.dp),
+        shape = MaterialTheme.shapes.small,
+        color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.size(40.dp),
     ) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                rank.toString(), fontWeight = FontWeight.Bold,
-                color = if (highlight) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                rank.toString(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,
+                color = if (highlight) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
+    }
+}
+
+/** Kopf einer Unterseite: Titel und darunter die Gruppe. */
+@Composable
+private fun PageHead(title: String, sub: String?) {
+    Column {
+        ScreenTitle(title)
+        sub?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp)) }
     }
 }
 
@@ -238,22 +288,29 @@ private fun TablePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<String>,
     var state by remember { mutableStateOf<Result<LeagueTable>?>(null) }
     LaunchedEffect(g) { state = clickTt.table(g) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { ScreenTitle("Tabelle") }
-        item { InfoText(g.name) }
-        item { Loaded(state) { t -> t.ttrAverage?.let { InfoText("Ø TTR der Liga: $it") } } }
-        val table = (state as? Result.Ok)?.value
-        items(table?.rows.orEmpty()) { r ->
-            val mine = r.teamId in own
-            AppCard(onClick = { links.team(TeamRef(g, r.teamId, r.teamName)) }) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RankBadge(r.rank, mine)
-                    Column(Modifier.weight(1f)) {
-                        Text(r.teamName, style = MaterialTheme.typography.titleMedium)
-                        Text("${r.meetings} Spiele · ${r.won} S ${r.tie} U ${r.lost} N · Spiele ${r.matchesWon}:${r.matchesLost}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        item { PageHead("Tabelle", g.name) }
+        item {
+            Loaded(state) { t ->
+                HeroCard {
+                    HeroStrip {
+                        HeroStat("Mannschaften", t.rows.size.toString())
+                        HeroStat("Ø TTR", t.ttrAverage?.toString() ?: "–")
+                        HeroStat("Spitze", t.rows.firstOrNull()?.let { "${it.pointsWon}:${it.pointsLost}" } ?: "–")
                     }
-                    Text("${r.pointsWon}:${r.pointsLost}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
+        }
+        val table = (state as? Result.Ok)?.value
+        if (!table?.rows.isNullOrEmpty()) item { SectionLabel("Platz · Mannschaft · Punkte") }
+        items(table?.rows.orEmpty()) { r ->
+            val mine = r.teamId in own
+            ListCard(
+                title = r.teamName,
+                subtitle = "${r.meetings} Spiele · ${r.won} S ${r.tie} U ${r.lost} N · Spiele ${r.matchesWon}:${r.matchesLost}",
+                onClick = { links.team(TeamRef(g, r.teamId, r.teamName)) },
+                leading = { RankBadge(r.rank, mine) },
+                trailing = { TrailingNumber("${r.pointsWon}:${r.pointsLost}", if (mine) "Deine" else "Punkte", if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+            )
         }
         item { Spacer(Modifier.height(16.dp)) }
     }
@@ -264,15 +321,10 @@ private fun SchedulePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<Strin
     var filter by remember { mutableStateOf("gesamt") }
     var state by remember { mutableStateOf<Result<List<GroupMeeting>>?>(null) }
     LaunchedEffect(g, filter) { state = null; state = clickTt.schedule(g, filter) }
+    val keys = listOf("gesamt", "vr", "rr")
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { ScreenTitle("Spielplan") }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(filter == "gesamt", { filter = "gesamt" }, { Text("Gesamt") })
-                FilterChip(filter == "vr", { filter = "vr" }, { Text("Vorrunde") })
-                FilterChip(filter == "rr", { filter = "rr" }, { Text("Rückrunde") })
-            }
-        }
+        item { PageHead("Spielplan", g.name) }
+        item { Segmented(listOf("Gesamt", "Vorrunde", "Rückrunde"), keys.indexOf(filter)) { filter = keys[it] } }
         item { Loaded(state) { } }
         items((state as? Result.Ok)?.value.orEmpty()) { m ->
             val mine = m.homeId in own || m.awayId in own
@@ -286,22 +338,34 @@ private fun SchedulePage(clickTt: ClickTtRepository, g: GroupRef, own: Set<Strin
                     away = m.awayId?.let { TeamRef(g, it, m.away, m.awayClubNr) },
                 )
             }
-            AppCard(onClick = report?.let { r -> { links.report(r) } }) {
-                Text(formatShort(m.date), style = MaterialTheme.typography.bodySmall, color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${m.home} – ${m.away}", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    m.result?.let { Pill(it) }
-                    if (running) Pill(if (m.live) "LIVE" else "läuft", color = MaterialTheme.colorScheme.primaryContainer, textColor = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-            }
+            MeetingCard(m.date, m.home, m.away, m.result, mine, running, m.live, report?.let { r -> { links.report(r) } })
         }
         item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
-private fun formatShort(iso: String?): String {
-    val d = MatchTime.day(iso) ?: return iso.orEmpty()
-    return "%02d.%02d.%02d".format(d.dayOfMonth, d.monthValue, d.year % 100) + (MatchTime.time(iso)?.let { " $it" }.orEmpty())
+/** Spiel im Spielplan: Datum links, Heim und Gast untereinander, Ergebnis rechts. */
+@Composable
+private fun MeetingCard(date: String?, home: String, away: String, result: String?, mine: Boolean, running: Boolean, live: Boolean, onClick: (() -> Unit)?) {
+    val day = MatchTime.day(date)
+    AppCard(onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (day != null) {
+                DateBadge("%02d.%02d.".format(day.dayOfMonth, day.monthValue), MatchTime.time(date) ?: (day.year % 100).toString())
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(home, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+                Text(away, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+                if (mine || running) {
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (running) LivePill(if (live) "LIVE" else "läuft")
+                        if (mine) Pill("Eigene", color = MaterialTheme.colorScheme.primaryContainer, textColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+            }
+            if (result != null) ScoreBox(result) else if (day == null) Text(date.orEmpty(), style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
 
 /** Wie [Spieltag.isRunning], für ein Spiel aus dem Spielplan der Gruppe. */
@@ -318,25 +382,22 @@ private fun RankingPage(clickTt: ClickTtRepository, g: GroupRef, links: Links) {
     var state by remember { mutableStateOf<Result<List<BalanceRow>>?>(null) }
     LaunchedEffect(g) { state = clickTt.ranking(g) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { ScreenTitle("Bilanz-Rangliste") }
-        item { InfoText(g.name) }
+        item { PageHead("Bilanz-Rangliste", g.name) }
         item { Loaded(state) { } }
         items((state as? Result.Ok)?.value.orEmpty()) { r ->
             val team = r.teamId.takeIf { it.isNotBlank() }?.let { TeamRef(g, it, r.team, r.clubNr) }
-            AppCard(onClick = if (r.playerId.startsWith("NU")) ({ links.player(PlayerLink(r.playerId, r.name, clubNr = r.clubNr, team = team)) }) else null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RankBadge(r.rank)
-                    Column(Modifier.weight(1f)) {
-                        Text(r.name, style = MaterialTheme.typography.titleMedium)
-                        Text(r.team, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ListCard(
+                title = r.name,
+                subtitle = r.team,
+                onClick = if (r.playerId.startsWith("NU")) ({ links.player(PlayerLink(r.playerId, r.name, clubNr = r.clubNr, team = team)) }) else null,
+                leading = { RankBadge(r.rank) },
+                trailing = { TrailingNumber(r.rating, "Gesamt ${r.won}:${r.lost}", MaterialTheme.colorScheme.primary) },
+                extra = if (r.positions.isNotEmpty()) ({
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        r.positions.forEach { (p, v) -> Pill("$p: $v") }
                     }
-                    Pill(r.rating, color = MaterialTheme.colorScheme.primaryContainer, textColor = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    r.positions.forEach { (p, v) -> Pill("$p: $v") }
-                }
-                Text("Gesamt ${r.won}:${r.lost}", style = MaterialTheme.typography.bodySmall)
-            }
+                }) else null,
+            )
         }
         item { Spacer(Modifier.height(16.dp)) }
     }
@@ -347,11 +408,12 @@ private fun PickTeamPage(clickTt: ClickTtRepository, g: GroupRef, onPick: (Strin
     var state by remember { mutableStateOf<Result<LeagueTable>?>(null) }
     LaunchedEffect(g) { state = clickTt.table(g) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { ScreenTitle("Mannschaft wählen") }
+        item { PageHead("Mannschaft wählen", g.name) }
         item { Loaded(state) { } }
         items((state as? Result.Ok)?.value?.rows.orEmpty()) { r ->
-            AppCard(onClick = { onPick(r.teamId, r.teamName) }) { Text(r.teamName, style = MaterialTheme.typography.titleMedium) }
+            ListCard(r.teamName, onClick = { onPick(r.teamId, r.teamName) }, leading = { LetterBadge(r.teamName) })
         }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
@@ -374,8 +436,7 @@ private fun TtrRankingPage(clickTt: ClickTtRepository, teams: TeamRepository, pl
         progress = ""
     }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { ScreenTitle("TTR-Rangliste") }
-        item { InfoText(g.name) }
+        item { PageHead("TTR-Rangliste", g.name) }
         item { RatingModeChips() }
         failed?.let { item { InfoText(it) } }
         if (progress.isNotEmpty() && failed == null) item { InfoText(progress) }
