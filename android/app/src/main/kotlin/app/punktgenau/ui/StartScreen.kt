@@ -3,7 +3,6 @@ package app.punktgenau.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,8 +13,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,9 +41,21 @@ sealed interface StartUi {
 }
 
 /** Startbildschirm. Zum Aktualisieren nach unten ziehen. */
+/** Kachel für die Sprünge vom Startbildschirm; Pfeil und Text stehen links, nie gequetscht. */
 @Composable
-private fun NavLabel(text: String) {
-    Text(text, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge)
+private fun NavTile(text: String, onClick: () -> Unit, modifier: Modifier) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("→", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            Text(text, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,28 +105,39 @@ fun StartScreen(
                 val p = ui.profile
                 ScreenTitle(if (p.name != null) "Hallo, ${p.name}" else "Hallo")
                 val main = p.ttr ?: p.qttr
-                AppCard {
+                val on = MaterialTheme.colorScheme.onPrimary
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.large)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)),
+                            ),
+                        )
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
                         if (p.ttr != null) "DEIN TTR" else "DEIN Q-TTR",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = on.copy(alpha = 0.85f),
                     )
-                    Text(main?.toString() ?: "–", fontSize = 84.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.5).sp, color = MaterialTheme.colorScheme.onSurface)
+                    Text(main?.toString() ?: "–", fontSize = 88.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2).sp, color = on)
                     val last = p.events.lastOrNull { it.type == "meeting" }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (p.ttr != null && p.qttr != null) Pill("Q-TTR ${p.qttr}")
-                        if (p.ttr == null && p.qttr != null) Pill("TTR nicht geliefert")
+                        if (p.ttr != null && p.qttr != null) Pill("Q-TTR ${p.qttr}", color = on.copy(alpha = 0.18f), textColor = on)
+                        if (p.ttr == null && p.qttr != null) Pill("TTR nicht geliefert", color = on.copy(alpha = 0.18f), textColor = on)
                         if (last != null) {
                             val (txt, color) = deltaText(last.delta)
-                            Pill("Zuletzt $txt", color = color.copy(alpha = 0.12f), textColor = color)
+                            Pill("Zuletzt $txt", color = Color.White.copy(alpha = 0.92f), textColor = color)
                         }
                     }
                 }
-                val navPadding = PaddingValues(horizontal = 6.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FilledTonalButton(onOpenFavorites, Modifier.weight(1f), contentPadding = navPadding) { NavLabel("Favoriten") }
-                    FilledTonalButton(onOpenClub, Modifier.weight(1f), contentPadding = navPadding) { NavLabel("Verein") }
-                    FilledTonalButton(onOpenSpieltag, Modifier.weight(1f), contentPadding = navPadding) { NavLabel("Spieltag") }
+                    NavTile("Favoriten", onOpenFavorites, Modifier.weight(1f))
+                    NavTile("Verein", onOpenClub, Modifier.weight(1f))
+                    NavTile("Spieltag", onOpenSpieltag, Modifier.weight(1f))
                 }
             }
         }
