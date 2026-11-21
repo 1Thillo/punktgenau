@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Logo: Ball (weiß) im Ziel der Platte (Limette), mit dem Punkt genau in der Mitte. -->
+<!-- Logo: Tischtennisball mit koralle Naht, dazu zwei Bewegungsbögen und ein blauer Punkt genau in der Mitte. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Äußerer Ring der Zielscheibe -->
+    <!-- Bewegung: zwei Bögen oben rechts -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#7DD3FC"
         android:strokeWidth="4"
-        android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+        android:strokeLineCap="round"
+        android:pathData="M70.5,25.4 A33,33 0 0 1 85,42.7" />
     <!-- Ball -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-18,0a18,18 0,1 1,36 0a18,18 0,1 1,-36 0" />
+        android:pathData="M54,54m-28,0a28,28 0 1 1,56 0a28,28 0 1 1,-56 0" />
+    <!-- Naht des Balls in Koralle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF6B5B"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M30,40 Q54,60 78,40" />
     <!-- Punkt, der genau sitzt -->
     <path
         android:fillColor="#1D4ED8"
