@@ -1,30 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Logo: Tischtennisball mit koralle Naht, dazu zwei Bewegungsbögen und ein blauer Punkt genau in der Mitte. -->
+<!-- Logo: ein Tischtennisschläger bildet ein "p", der Ball steht als Punkt dahinter (punktgenau). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Bewegung: zwei Bögen oben rechts -->
+    <!-- Schlägerblatt in Koralle -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#7DD3FC"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M70.5,25.4 A33,33 0 0 1 85,42.7" />
-    <!-- Ball -->
+        android:fillColor="#FF6B5B"
+        android:pathData="M52,22 A18,22 0 1 1 52,66 A18,22 0 1 1 52,22 Z" />
+    <!-- Griff in Weiß, als Stiel des p -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-28,0a28,28 0 1 1,56 0a28,28 0 1 1,-56 0" />
-    <!-- Naht des Balls in Koralle -->
+        android:pathData="M47,62 H57 V80 Q57,86 52,86 Q47,86 47,80 Z" />
+    <!-- Ball als Punkt -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF6B5B"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M30,40 Q54,60 78,40" />
-    <!-- Punkt, der genau sitzt -->
-    <path
-        android:fillColor="#1D4ED8"
-        android:pathData="M54,54m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M67,78 a5,5 0 1 1 10,0 a5,5 0 1 1 -10,0 Z" />
 </vector>
