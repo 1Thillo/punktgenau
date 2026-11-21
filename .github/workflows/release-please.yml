@@ -11,19 +11,37 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    env:
+      # Eigener Token (Secret RELEASE_PLEASE_TOKEN). Nur mit ihm starten Release-PR und Tag weitere Workflows:
+      # Checks am Release-PR, Release nach dem Auto-Merge, APK-Bau per Tag. Ohne ihn läuft alles wie bisher.
+      HAS_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN != '' }}
     outputs:
       release_created: ${{ steps.rp.outputs.release_created }}
       tag_name: ${{ steps.rp.outputs.tag_name }}
+      has_token: ${{ env.HAS_TOKEN }}
     steps:
       - id: rp
         uses: googleapis/release-please-action@v5
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # Der Release-PR wird gemergt, sobald die Pflicht-Checks grün sind; danach legt dieser Workflow das Release an.
+      - name: Auto-Merge für den Release-PR einschalten
+        if: steps.rp.outputs.pr && env.HAS_TOKEN == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PR_JSON: ${{ steps.rp.outputs.pr }}
+        run: |
+          number=$(jq -r '.number' <<<"$PR_JSON")
+          gh pr merge "$number" --auto --merge --repo "$GITHUB_REPOSITORY"
+
+  # Ohne eigenen Token startet der Tag release.yml nicht von selbst; dann wird der Bau hier angestoßen.
+  # Mit Token übernimmt der Tag-Push den Bau, damit die APK nicht doppelt gebaut wird.
   build:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    if: needs.release-please.outputs.release_created == 'true' && needs.release-please.outputs.has_token != 'true'
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
