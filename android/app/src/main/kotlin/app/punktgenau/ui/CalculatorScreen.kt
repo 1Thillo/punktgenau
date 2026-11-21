@@ -91,7 +91,7 @@ fun CalculatorScreen(
         item {
             HeroCard {
                 val change = if (games.isEmpty()) null else result?.change
-                val on = MaterialTheme.colorScheme.onPrimary
+                val on = Color.White
                 val text = when {
                     change == null -> "–"
                     change > 0 -> "▲ +$change"

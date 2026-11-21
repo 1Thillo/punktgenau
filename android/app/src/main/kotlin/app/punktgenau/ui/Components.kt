@@ -52,7 +52,7 @@ fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
         modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .background(Brush.linearGradient(listOf(c.primary, c.primary.copy(alpha = 0.72f))))
+            .background(Brush.linearGradient(listOf(Color(0xFF1D4ED8), Color(0xFF0EA5E9))))
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
         content = content,

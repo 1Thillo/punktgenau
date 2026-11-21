@@ -41,6 +41,15 @@ sealed interface StartUi {
 }
 
 /** Startbildschirm. Zum Aktualisieren nach unten ziehen. */
+/** Ein Wert im Statusstreifen: klein beschriftet, groß dargestellt. */
+@Composable
+private fun StatCell(label: String, value: String, color: Color) {
+    Column {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = color.copy(alpha = 0.8f))
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = color)
+    }
+}
+
 /** Kachel für die Sprünge vom Startbildschirm; Pfeil und Text stehen links, nie gequetscht. */
 @Composable
 private fun NavTile(text: String, onClick: () -> Unit, modifier: Modifier) {
@@ -105,7 +114,7 @@ fun StartScreen(
                 val p = ui.profile
                 ScreenTitle(if (p.name != null) "Hallo, ${p.name}" else "Hallo")
                 val main = p.ttr ?: p.qttr
-                val on = MaterialTheme.colorScheme.onPrimary
+                val on = Color.White
                 HeroCard {
                     Text(
                         if (p.ttr != null) "DEIN TTR" else "DEIN Q-TTR",
@@ -114,13 +123,14 @@ fun StartScreen(
                     )
                     Text(main?.toString() ?: "–", fontSize = 88.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2).sp, color = on)
                     val last = p.events.lastOrNull { it.type == "meeting" }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (p.ttr != null && p.qttr != null) Pill("Q-TTR ${p.qttr}", color = on.copy(alpha = 0.18f), textColor = on)
-                        if (p.ttr == null && p.qttr != null) Pill("TTR nicht geliefert", color = on.copy(alpha = 0.18f), textColor = on)
-                        if (last != null) {
-                            val (txt, color) = deltaText(last.delta)
-                            Pill("Zuletzt $txt", color = Color.White.copy(alpha = 0.92f), textColor = color)
-                        }
+                    // Statusstreifen: drei Werte nebeneinander in einer hellen Leiste im Hero.
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 14.dp).clip(MaterialTheme.shapes.medium).background(Color.White.copy(alpha = 0.16f)).padding(vertical = 12.dp, horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        StatCell("Q-TTR", p.qttr?.toString() ?: "–", on)
+                        StatCell("Zuletzt", last?.let { deltaText(it.delta).first } ?: "–", on)
+                        StatCell("Einträge", p.events.size.toString(), on)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

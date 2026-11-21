@@ -17,9 +17,9 @@ import androidx.compose.ui.unit.sp
 enum class ThemeMode(val label: String) { LIGHT("Hell"), SYSTEM("System"), DARK("Dunkel") }
 
 /** Tischtennis-Grün-Teal als Hauptfarbe, Limette als Akzent (wie der Ball auf der Platte). */
-private val Teal = Color(0xFF0D6E69)
-private val TealSoft = Color(0xFFCDEFEA)
-private val Lime = Color(0xFFE3F5A0)
+private val Teal = Color(0xFF1D4ED8)
+private val TealSoft = Color(0xFFDBE7FF)
+private val Lime = Color(0xFFFFD6CF)
 private val Ink = Color(0xFF14201F)
 private val InkSoft = Color(0xFF55636A)
 private val Paper = Color(0xFFF1F5F3)
@@ -32,7 +32,7 @@ private val Light = lightColorScheme(
     primary = Teal,
     onPrimary = Color.White,
     primaryContainer = TealSoft,
-    onPrimaryContainer = Color(0xFF03302D),
+    onPrimaryContainer = Color(0xFF0B1F55),
     background = Paper,
     onBackground = Ink,
     surface = Color.White,
@@ -44,14 +44,14 @@ private val Light = lightColorScheme(
     surfaceContainerLow = Color(0xFFFAFAF8),
     surfaceContainer = Color(0xFFF1F0EC),
     secondaryContainer = Lime,
-    onSecondaryContainer = Color(0xFF243000),
+    onSecondaryContainer = Color(0xFF5A1A14),
 )
 
 private val Dark = darkColorScheme(
-    primary = Color(0xFF6FD6CB),
-    onPrimary = Color(0xFF003733),
-    primaryContainer = Color(0xFF0F4F4A),
-    onPrimaryContainer = Color(0xFFB5F2EA),
+    primary = Color(0xFF7AA7FF),
+    onPrimary = Color(0xFF00245E),
+    primaryContainer = Color(0xFF163A7A),
+    onPrimaryContainer = Color(0xFFDCE7FF),
     background = Color(0xFF15181B),
     onBackground = Color(0xFFF2F2F0),
     surface = Color(0xFF1F2327),
@@ -62,8 +62,8 @@ private val Dark = darkColorScheme(
     outlineVariant = Color(0xFF2F353B),
     surfaceContainerLow = Color(0xFF1A1E22),
     surfaceContainer = Color(0xFF232830),
-    secondaryContainer = Color(0xFF3D4A14),
-    onSecondaryContainer = Color(0xFFE3F5A0),
+    secondaryContainer = Color(0xFF5A2A24),
+    onSecondaryContainer = Color(0xFFFFD6CF),
 )
 
 private val AppTypography = Typography(
