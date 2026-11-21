@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/1Thillo/punktgenau/compare/v0.5.0...v0.6.0) (2026-11-21)
+
+
+### Features
+
+* **suche:** letzte Namenssuchen merken und anbieten ([66907bc](https://github.com/1Thillo/punktgenau/commit/66907bc775692eb47011f019fe94ef71a0c1d4f9))
+
 ## [0.5.0](https://github.com/1Thillo/punktgenau/compare/v0.4.0...v0.5.0) (2026-11-21)
 
 
