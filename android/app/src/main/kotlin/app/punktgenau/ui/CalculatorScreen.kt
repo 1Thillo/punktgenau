@@ -65,7 +65,12 @@ class CalculatorState(initialAge: AgeGroup = AgeGroup.ADULT) {
 }
 
 @Composable
-fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {}, onResetOwn: () -> Unit = {}) {
+fun CalculatorScreen(
+    state: CalculatorState,
+    onLoadAppointment: () -> Unit = {},
+    onResetOwn: () -> Unit = {},
+    onDefaultAgeChange: (AgeGroup) -> Unit = {},
+) {
     var ownText by state::ownText
     var age by state::age
     var fewSingles by state::fewSingles
@@ -125,8 +130,9 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {},
             AppCard {
                 Text("Änderungskonstante", style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(age == AgeGroup.UNDER_21, { age = if (age == AgeGroup.UNDER_21) AgeGroup.ADULT else AgeGroup.UNDER_21 }, { Text("unter 21") })
-                    FilterChip(age == AgeGroup.UNDER_16, { age = if (age == AgeGroup.UNDER_16) AgeGroup.ADULT else AgeGroup.UNDER_16 }, { Text("unter 16") })
+                    // Die gewählte Altersklasse wird zugleich als Standard für den nächsten Start gespeichert.
+                    FilterChip(age == AgeGroup.UNDER_21, { age = if (age == AgeGroup.UNDER_21) AgeGroup.ADULT else AgeGroup.UNDER_21; onDefaultAgeChange(age) }, { Text("unter 21") })
+                    FilterChip(age == AgeGroup.UNDER_16, { age = if (age == AgeGroup.UNDER_16) AgeGroup.ADULT else AgeGroup.UNDER_16; onDefaultAgeChange(age) }, { Text("unter 16") })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("weniger als 30 Einzel", Modifier.weight(1f))

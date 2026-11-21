@@ -19,7 +19,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import app.punktgenau.domain.label
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,8 +48,6 @@ fun StartScreen(
     onOpenFavorites: () -> Unit,
     alertsOn: Boolean,
     onAlertsChange: (Boolean) -> Unit,
-    defaultAge: app.punktgenau.domain.AgeGroup,
-    onDefaultAgeChange: (app.punktgenau.domain.AgeGroup) -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -123,12 +120,6 @@ fun StartScreen(
                     )
                 }
                 Switch(checked = alertsOn, onCheckedChange = onAlertsChange)
-            }
-        }
-        SectionLabel("Rechner")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            app.punktgenau.domain.AgeGroup.entries.forEach { g ->
-                FilterChip(defaultAge == g, { onDefaultAgeChange(g) }, { Text(g.label) })
             }
         }
         SectionLabel("Darstellung")
