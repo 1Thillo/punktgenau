@@ -40,6 +40,13 @@ object MatchAlerts {
         return out
     }
 
+    /**
+     * Der Ist-Stand beim ersten Lauf: alles, was jetzt fällig wäre, wird als gemeldet vorgemerkt, ohne etwas zu zeigen.
+     * So kommen beim Einschalten nicht alle Ergebnisse der Saison auf einmal.
+     */
+    fun baseline(matches: List<SpieltagMatch>, now: LocalDateTime): Set<String> =
+        plan(matches, now, emptySet()).map { it.key }.toSet()
+
     /** Stabiler Schlüssel eines Spiels: Mannschaft, Anstoß und Gegner. */
     fun key(m: SpieltagMatch): String = "${m.team.id}|${m.appointment.date}|${m.appointment.opponentTeamId}"
 }

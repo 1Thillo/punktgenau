@@ -41,7 +41,14 @@ class MatchAlertWorker(context: Context, params: WorkerParameters) : CoroutineWo
             else -> return ListenableWorker.Result.success()
         }
         val store = app.alertStore
-        val alerts = MatchAlerts.plan(matches, MatchTime.now(), store.sent())
+        val now = MatchTime.now()
+        if (!app.alertsBaselined) {
+            // Erster Lauf nach dem Einschalten: nur den Stand merken, nichts melden.
+            store.add(MatchAlerts.baseline(matches, now))
+            app.markAlertsBaselined()
+            return ListenableWorker.Result.success()
+        }
+        val alerts = MatchAlerts.plan(matches, now, store.sent())
         if (alerts.isEmpty()) return ListenableWorker.Result.success()
         // Ohne Erlaubnis bleibt alles offen und wird beim nächsten Lauf mit Erlaubnis gemeldet.
         if (!Notifier.canPost(applicationContext)) return ListenableWorker.Result.success()

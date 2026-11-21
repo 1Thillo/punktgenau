@@ -42,8 +42,17 @@ class PunktgenauApp : Application() {
     val alertsEnabled: Boolean
         get() = prefs.getBoolean("match_alerts", false)
 
+    /** Ist der Ist-Stand beim ersten Lauf nach dem Einschalten schon gemerkt? */
+    val alertsBaselined: Boolean
+        get() = prefs.getBoolean("match_alerts_baselined", false)
+
+    fun markAlertsBaselined() {
+        prefs.edit().putBoolean("match_alerts_baselined", true).apply()
+    }
+
     fun setAlertsEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean("match_alerts", enabled).apply()
+        // Beim Einschalten wird der Ist-Stand neu gemerkt, damit nichts Altes gemeldet wird.
+        prefs.edit().putBoolean("match_alerts", enabled).putBoolean("match_alerts_baselined", false).apply()
         app.punktgenau.notify.MatchAlertWorker.setEnabled(this, enabled)
     }
 

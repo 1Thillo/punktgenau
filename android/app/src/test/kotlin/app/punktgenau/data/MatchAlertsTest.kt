@@ -56,6 +56,24 @@ class MatchAlertsTest {
         assertTrue(MatchAlerts.plan(listOf(match(null)), now, emptySet()).isEmpty())
     }
 
+    @Test fun baseline_meldetNichtsUndVerhindertSpaetereAlarme() {
+        // Alte Ergebnisse und ein Spiel in drei Stunden sind beim ersten Lauf schon da
+        val ms = listOf(match(past, result = "6:4"), match(inTwoHours), match(inFiveHours))
+        val base = MatchAlerts.baseline(ms, now)
+        assertEquals(2, base.size) // Ergebnis + Ankündigung des Spiels in zwei Stunden
+        // Danach kommt nichts mehr, was schon vorgemerkt ist
+        assertTrue(MatchAlerts.plan(ms, now, base).isEmpty())
+    }
+
+    @Test fun baseline_laesstNeueErgebnisseDurch() {
+        val earlier = listOf(match(past, result = "6:4", opponent = "A"))
+        val base = MatchAlerts.baseline(earlier, now)
+        val later = earlier + match(past, result = "3:6", opponent = "B")
+        val alerts = MatchAlerts.plan(later, now, base)
+        assertEquals(1, alerts.size)
+        assertTrue(alerts.single().text.contains("B"))
+    }
+
     @Test fun store_merktUndBegrenzt() {
         val mem = object : StringSetStorage {
             var v: Set<String> = emptySet()
