@@ -5,7 +5,7 @@ plugins {
 }
 
 // Version: wird von release-please gesetzt (Marker nicht entfernen).
-val appVersionName = "0.4.0" // x-release-please-version
+val appVersionName = "0.7.0" // x-release-please-version
 val appVersionCode = appVersionName.split(".").let { (major, minor, patch) ->
     major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt()
 }
@@ -76,6 +76,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
     implementation("com.squareup.okhttp3:okhttp:5.5.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
+    implementation("androidx.core:core-ktx:1.16.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")

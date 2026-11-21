@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.7.0](https://github.com/1Thillo/punktgenau/compare/v0.6.0...v0.7.0) (2026-11-21)
+
+
+### Features
+
+* **rechner:** Standard-Altersklasse in den Einstellungen festlegen ([e0bbc6a](https://github.com/1Thillo/punktgenau/commit/e0bbc6a7d91d66ede1a58f2eae3cd655eb63905c))
+* **rechner:** Standard-Altersklasse in den Einstellungen festlegen ([9899678](https://github.com/1Thillo/punktgenau/commit/9899678dc28ec5c229217a75b344ba50515e2b6b))
+
+## [0.6.0](https://github.com/1Thillo/punktgenau/compare/v0.5.0...v0.6.0) (2026-11-21)
+
+
+### Features
+
+* **suche:** letzte Namenssuchen merken und anbieten ([66907bc](https://github.com/1Thillo/punktgenau/commit/66907bc775692eb47011f019fe94ef71a0c1d4f9))
+
+## [0.5.0](https://github.com/1Thillo/punktgenau/compare/v0.4.0...v0.5.0) (2026-11-21)
+
+
+### Features
+
+* **benachrichtigungen:** kommende Spiele und Ergebnisse melden ([9d85439](https://github.com/1Thillo/punktgenau/commit/9d85439e462334767adb8fa2da5e5d2008953c91))
+* **benachrichtigungen:** kommende Spiele und Ergebnisse melden ([f68fa65](https://github.com/1Thillo/punktgenau/commit/f68fa6589e0c35c03f4ca08b82ae218a518f7ed7))
+
+
+### Bug Fixes
+
+* **benachrichtigungen:** ersten Lauf nur den Stand merken lassen ([b1a6f1b](https://github.com/1Thillo/punktgenau/commit/b1a6f1b8a5a379583c7391cf95e4e8253b1d7bdc))
+
 ## [0.4.0](https://github.com/1Thillo/punktgenau/compare/v0.3.0...v0.4.0) (2026-11-21)
 
 

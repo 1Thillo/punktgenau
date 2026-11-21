@@ -48,13 +48,13 @@ const val OWN_LABEL_TTR = "Eigener TTR"
 const val OWN_LABEL_QTTR = "Q-TTR (ohne Premium kein aktueller TTR)"
 
 /** Zustand des Rechners; wird von mehreren Screens genutzt (Suche fügt Gegner hinzu). */
-class CalculatorState {
+class CalculatorState(initialAge: AgeGroup = AgeGroup.ADULT) {
     var ownText by mutableStateOf("")
     /** Q-TTR, der als Ersatz für den fehlenden TTR (ohne Premium) ins Feld kam; sonst null. */
     var ownFallbackValue: Int? by mutableStateOf(null)
     /** Stand des Q-TTR-Ersatzwerts als Anzeige (TT.MM.JJJJ), sonst null. */
     var ownFallbackDate: String? by mutableStateOf(null)
-    var age by mutableStateOf(AgeGroup.ADULT)
+    var age by mutableStateOf(initialAge)
     var fewSingles by mutableStateOf(false)
     var breakFlag by mutableStateOf(false)
     val rows = mutableStateListOf(GameRow())
@@ -67,7 +67,12 @@ class CalculatorState {
 }
 
 @Composable
-fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {}, onResetOwn: () -> Unit = {}) {
+fun CalculatorScreen(
+    state: CalculatorState,
+    onLoadAppointment: () -> Unit = {},
+    onResetOwn: () -> Unit = {},
+    onDefaultAgeChange: (AgeGroup) -> Unit = {},
+) {
     var ownText by state::ownText
     var age by state::age
     var fewSingles by state::fewSingles
@@ -131,8 +136,9 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {},
             AppCard {
                 Text("Änderungskonstante", style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(age == AgeGroup.UNDER_21, { age = if (age == AgeGroup.UNDER_21) AgeGroup.ADULT else AgeGroup.UNDER_21 }, { Text("unter 21") })
-                    FilterChip(age == AgeGroup.UNDER_16, { age = if (age == AgeGroup.UNDER_16) AgeGroup.ADULT else AgeGroup.UNDER_16 }, { Text("unter 16") })
+                    // Die gewählte Altersklasse wird zugleich als Standard für den nächsten Start gespeichert.
+                    FilterChip(age == AgeGroup.UNDER_21, { age = if (age == AgeGroup.UNDER_21) AgeGroup.ADULT else AgeGroup.UNDER_21; onDefaultAgeChange(age) }, { Text("unter 21") })
+                    FilterChip(age == AgeGroup.UNDER_16, { age = if (age == AgeGroup.UNDER_16) AgeGroup.ADULT else AgeGroup.UNDER_16; onDefaultAgeChange(age) }, { Text("unter 16") })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("weniger als 30 Einzel", Modifier.weight(1f))

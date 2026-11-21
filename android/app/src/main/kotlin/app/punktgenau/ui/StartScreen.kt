@@ -12,11 +12,15 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +34,8 @@ sealed interface StartUi {
     data class Error(val message: String) : StartUi
 }
 
+/** Startbildschirm. Zum Aktualisieren nach unten ziehen. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartScreen(
     ui: StartUi,
@@ -38,13 +44,13 @@ fun StartScreen(
     onLogin: () -> Unit,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
-    onOpenHistory: () -> Unit,
-    onOpenCalculator: () -> Unit,
     onOpenClub: () -> Unit,
-    onOpenTransfers: () -> Unit,
     onOpenSpieltag: () -> Unit,
     onOpenFavorites: () -> Unit,
+    alertsOn: Boolean,
+    onAlertsChange: (Boolean) -> Unit,
 ) {
+    PullToRefreshBox(isRefreshing = ui == StartUi.Loading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -95,15 +101,23 @@ fun StartScreen(
                         }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onOpenCalculator, Modifier.weight(1f)) { Text("Rechner") }
-                    OutlinedButton(onOpenHistory, Modifier.weight(1f)) { Text("Verlauf") }
-                }
                 OutlinedButton(onOpenFavorites, Modifier.fillMaxWidth()) { Text("Favoriten") }
                 OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
-                OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
                 OutlinedButton(onOpenSpieltag, Modifier.fillMaxWidth()) { Text("Spieltag") }
-                OutlinedButton(onRefresh, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
+            }
+        }
+        SectionLabel("Benachrichtigungen")
+        AppCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Spiele melden", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Kommende Spiele (3 Stunden vorher) und neue Ergebnisse deiner Mannschaften. Die Prüfung läuft alle drei Stunden im Hintergrund.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = alertsOn, onCheckedChange = onAlertsChange)
             }
         }
         SectionLabel("Darstellung")
@@ -115,5 +129,6 @@ fun StartScreen(
             OutlinedButton(onLogout, Modifier.fillMaxWidth()) { Text("Abmelden und Daten löschen") }
         }
         Spacer(Modifier.height(24.dp))
+    }
     }
 }

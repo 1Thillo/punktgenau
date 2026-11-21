@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.punktgenau.data.GroupRef
@@ -114,7 +115,13 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     val leagueTab = remember { LeagueNavState() }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
     val scope = rememberCoroutineScope()
-    val calc = remember { CalculatorState() }
+    val calc = remember { CalculatorState(app.defaultAge) }
+    // Schalter für Spielbenachrichtigungen; als Compose-Zustand, damit die Anzeige sofort mitzieht.
+    var alertsOn by remember { mutableStateOf(app.alertsEnabled) }
+    // Erlaubnis für Benachrichtigungen (Android 13 und neuer). Das Ergebnis braucht es nicht: der Lauf prüft sie selbst.
+    val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { }
 
     fun pop() {
         if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex)
@@ -274,12 +281,17 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onLogin = { showLogin = true },
                     onRefresh = { refresh() },
                     onLogout = { app.session.logout(); ui = StartUi.LoggedOut },
-                    onOpenHistory = { tab = Tab.HISTORY },
-                    onOpenCalculator = { tab = Tab.CALCULATOR },
                     onOpenClub = { scope.launch { app.teams.ownClubNr()?.let { stack.add(Dest.Club(it)) } } },
-                    onOpenTransfers = { stack.add(Dest.Transfers) },
                     onOpenSpieltag = { stack.add(Dest.Spieltag()) },
                     onOpenFavorites = { stack.add(Dest.Favorites) },
+                    alertsOn = alertsOn,
+                    onAlertsChange = { on ->
+                        if (on && android.os.Build.VERSION.SDK_INT >= 33) {
+                            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        app.setAlertsEnabled(on)
+                        alertsOn = on
+                    },
                 )
                 Tab.HISTORY -> HistoryScreen(
                     events = (ui as? StartUi.Shown)?.profile?.events.orEmpty(),
@@ -293,11 +305,21 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onResetOwn = {
                         (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr; calc.ownFallbackDate = if (p.ttr != null) null else p.qttrDate } }
                     },
+                    onDefaultAgeChange = { age -> app.defaultAge = age },
                 )
-                Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown, state = leagueTab, links = links)
+                Tab.LEAGUE -> LeagueScreen(
+                    app.clickTt,
+                    app.teams,
+                    app.playerRepo,
+                    loggedIn = ui is StartUi.Shown,
+                    state = leagueTab,
+                    links = links,
+                    onOpenTransfers = { stack.add(Dest.Transfers) },
+                )
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
                     advanced = app.advancedSearch,
+                    history = app.searchHistory,
                     onViewPlayer = { hit -> hit.nuId?.let { stack.add(Dest.Player(PlayerLink(it, hit.displayName, club = hit.club))) } },
                     onAddToCalculator = { calc.addOpponent(it); tab = Tab.CALCULATOR },
                     onNeedsLogin = { ui = StartUi.LoggedOut; tab = Tab.START },
