@@ -89,17 +89,20 @@ fun CalculatorScreen(
     ) {
         item { ScreenTitle("Rechner") }
         item {
-            AppCard {
+            HeroCard {
                 val change = if (games.isEmpty()) null else result?.change
-                val (text, color) = when {
-                    change == null -> "–" to MaterialTheme.colorScheme.onSurface
-                    else -> deltaText(change)
+                val on = MaterialTheme.colorScheme.onPrimary
+                val text = when {
+                    change == null -> "–"
+                    change > 0 -> "▲ +$change"
+                    change < 0 -> "▼ −${-change}"
+                    else -> "● 0"
                 }
                 Text(
                     text,
                     fontSize = 72.sp,
                     fontWeight = FontWeight.Bold,
-                    color = color,
+                    color = on,
                     modifier = Modifier.semantics {
                         contentDescription = when {
                             change == null -> "Noch keine Berechnung"
@@ -110,8 +113,8 @@ fun CalculatorScreen(
                     },
                 )
                 if (result != null && games.isNotEmpty()) {
-                    Text("${result.ownRating} → ${result.newRating}", style = MaterialTheme.typography.titleLarge)
-                    Text("ÄK ${result.alterationConstant}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${result.ownRating} → ${result.newRating}", style = MaterialTheme.typography.titleLarge, color = on)
+                    Text("ÄK ${result.alterationConstant}", style = MaterialTheme.typography.bodyMedium, color = on.copy(alpha = 0.85f))
                 }
             }
         }

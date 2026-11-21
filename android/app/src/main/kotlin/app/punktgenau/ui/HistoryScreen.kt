@@ -120,10 +120,7 @@ private fun EventCard(e: HistoryEvent, onClick: (() -> Unit)? = null, note: Stri
     val (delta, color) = deltaText(e.delta)
     AppCard(onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Column(Modifier.width(54.dp)) {
-                Text("%02d.%02d.".format(e.date.dayOfMonth, e.date.monthValue), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                Text(e.date.year.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            DateBadge("%02d.%02d.".format(e.date.dayOfMonth, e.date.monthValue), e.date.year.toString())
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (league != null) Text(league, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(teams, style = MaterialTheme.typography.titleMedium)

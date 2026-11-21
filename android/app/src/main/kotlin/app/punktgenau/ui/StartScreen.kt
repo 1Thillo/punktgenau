@@ -106,18 +106,7 @@ fun StartScreen(
                 ScreenTitle(if (p.name != null) "Hallo, ${p.name}" else "Hallo")
                 val main = p.ttr ?: p.qttr
                 val on = MaterialTheme.colorScheme.onPrimary
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.large)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)),
-                            ),
-                        )
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
+                HeroCard {
                     Text(
                         if (p.ttr != null) "DEIN TTR" else "DEIN Q-TTR",
                         style = MaterialTheme.typography.labelMedium,

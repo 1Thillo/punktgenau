@@ -1,7 +1,10 @@
 package app.punktgenau.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -30,6 +33,36 @@ fun AppCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, conten
         Card(onClick = onClick, modifier = modifier.fillMaxWidth(), colors = colors, border = border, shape = MaterialTheme.shapes.medium, content = inner)
     } else {
         Card(modifier = modifier.fillMaxWidth(), colors = colors, border = border, shape = MaterialTheme.shapes.medium, content = inner)
+    }
+}
+
+/** Farbige Hero-Fläche für die wichtigste Zahl eines Bildschirms (TTR, Ergebnis). Text nutzt onPrimary. */
+@Composable
+fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val c = MaterialTheme.colorScheme
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(Brush.linearGradient(listOf(c.primary, c.primary.copy(alpha = 0.72f))))
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        content = content,
+    )
+}
+
+/** Kleines Datumsfeld in Akzentfarbe, z. B. für Verlaufseinträge. */
+@Composable
+fun DateBadge(day: String, year: String) {
+    Column(
+        Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(day, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(year, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
     }
 }
 
