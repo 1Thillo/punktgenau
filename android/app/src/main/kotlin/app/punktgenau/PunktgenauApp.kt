@@ -38,6 +38,9 @@ class PunktgenauApp : Application() {
     val advancedSearch by lazy { app.punktgenau.data.AdvancedSearchRepository(session, baseUrl) }
     val profiles by lazy { ProfileRepository(session, baseUrl) }
 
+    /** Letzte Namenssuchen, lokal auf dem Gerät. */
+    val searchHistory by lazy { app.punktgenau.data.SearchHistory(getSharedPreferences("search", MODE_PRIVATE)) }
+
     /** Spielbenachrichtigungen: eingeschaltet oder nicht (Standard: aus). */
     val alertsEnabled: Boolean
         get() = prefs.getBoolean("match_alerts", false)

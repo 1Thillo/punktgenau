@@ -1,5 +1,7 @@
 package app.punktgenau.ui
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -36,6 +41,7 @@ import app.punktgenau.data.PlayerRepository
 import app.punktgenau.data.RatingOutcome
 import app.punktgenau.data.Result
 import app.punktgenau.data.SearchFilter
+import app.punktgenau.data.SearchHistory
 import app.punktgenau.data.SearchOutcome
 import kotlinx.coroutines.launch
 
@@ -45,11 +51,13 @@ private data class Selected(val player: PlayerHit, val outcome: RatingOutcome?)
 fun SearchScreen(
     repo: PlayerRepository,
     advanced: AdvancedSearchRepository,
+    history: SearchHistory,
     onAddToCalculator: (Int) -> Unit,
     onViewPlayer: (PlayerHit) -> Unit,
     onNeedsLogin: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var recent by remember { mutableStateOf(history.load()) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var hits by remember { mutableStateOf<List<PlayerHit>>(emptyList()) }
@@ -72,6 +80,8 @@ fun SearchScreen(
             when (val r = repo.search(query)) {
                 is SearchOutcome.Hits -> {
                     hits = r.players
+                    history.add(query)
+                    recent = history.load()
                     if (r.players.isEmpty()) message = "Keine Treffer."
                 }
                 SearchOutcome.NeedsLogin -> onNeedsLogin()
@@ -138,6 +148,22 @@ fun SearchScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             Button({ runSearch() }, enabled = !busy && query.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Suchen") }
+            if (recent.isNotEmpty()) {
+                // Letzte Suchen zum Antippen; „Verlauf löschen“ leert die Liste auf diesem Gerät.
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    recent.forEach { term ->
+                        AssistChip(onClick = { query = term; runSearch() }, label = { Text(term) })
+                    }
+                }
+                TextButton(
+                    onClick = { history.clear(); recent = emptyList() },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Verlauf löschen") }
+            }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(gender == "all", { gender = "all" }, { Text("Alle") })
