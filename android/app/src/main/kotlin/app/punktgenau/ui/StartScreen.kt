@@ -15,8 +15,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,8 @@ fun StartScreen(
     onOpenTransfers: () -> Unit,
     onOpenSpieltag: () -> Unit,
     onOpenFavorites: () -> Unit,
+    alertsOn: Boolean,
+    onAlertsChange: (Boolean) -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -102,6 +106,20 @@ fun StartScreen(
                 OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
                 OutlinedButton(onOpenSpieltag, Modifier.fillMaxWidth()) { Text("Spieltag") }
                 OutlinedButton(onRefresh, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
+            }
+        }
+        SectionLabel("Benachrichtigungen")
+        AppCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Spiele melden", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Kommende Spiele (3 Stunden vorher) und neue Ergebnisse deiner Mannschaften. Die Prüfung läuft alle drei Stunden im Hintergrund.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = alertsOn, onCheckedChange = onAlertsChange)
             }
         }
         SectionLabel("Darstellung")

@@ -37,4 +37,32 @@ class PunktgenauApp : Application() {
     val transfers by lazy { app.punktgenau.data.TransferRepository(session, baseUrl) }
     val advancedSearch by lazy { app.punktgenau.data.AdvancedSearchRepository(session, baseUrl) }
     val profiles by lazy { ProfileRepository(session, baseUrl) }
+
+    /** Spielbenachrichtigungen: eingeschaltet oder nicht (Standard: aus). */
+    val alertsEnabled: Boolean
+        get() = prefs.getBoolean("match_alerts", false)
+
+    /** Ist der Ist-Stand beim ersten Lauf nach dem Einschalten schon gemerkt? */
+    val alertsBaselined: Boolean
+        get() = prefs.getBoolean("match_alerts_baselined", false)
+
+    fun markAlertsBaselined() {
+        prefs.edit().putBoolean("match_alerts_baselined", true).apply()
+    }
+
+    fun setAlertsEnabled(enabled: Boolean) {
+        // Beim Einschalten wird der Ist-Stand neu gemerkt, damit nichts Altes gemeldet wird.
+        prefs.edit().putBoolean("match_alerts", enabled).putBoolean("match_alerts_baselined", false).apply()
+        app.punktgenau.notify.MatchAlertWorker.setEnabled(this, enabled)
+    }
+
+    val alertStore by lazy {
+        app.punktgenau.data.AlertStore(object : app.punktgenau.data.StringSetStorage {
+            private val p by lazy { getSharedPreferences("alerts", MODE_PRIVATE) }
+            override fun get(): Set<String> = (p.getStringSet("sent", emptySet()) ?: emptySet()).toSet()
+            override fun put(values: Set<String>) {
+                p.edit().putStringSet("sent", values).apply()
+            }
+        })
+    }
 }
