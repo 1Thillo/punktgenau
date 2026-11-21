@@ -48,11 +48,11 @@ const val OWN_LABEL_TTR = "Eigener TTR"
 const val OWN_LABEL_QTTR = "Q-TTR (ohne Premium kein aktueller TTR)"
 
 /** Zustand des Rechners; wird von mehreren Screens genutzt (Suche fügt Gegner hinzu). */
-class CalculatorState {
+class CalculatorState(initialAge: AgeGroup = AgeGroup.ADULT) {
     var ownText by mutableStateOf("")
     /** Q-TTR, der als Ersatz für den fehlenden TTR (ohne Premium) ins Feld kam; sonst null. */
     var ownFallbackValue: Int? by mutableStateOf(null)
-    var age by mutableStateOf(AgeGroup.ADULT)
+    var age by mutableStateOf(initialAge)
     var fewSingles by mutableStateOf(false)
     var breakFlag by mutableStateOf(false)
     val rows = mutableStateListOf(GameRow())

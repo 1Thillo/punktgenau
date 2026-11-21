@@ -115,9 +115,11 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     val leagueTab = remember { LeagueNavState() }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
     val scope = rememberCoroutineScope()
-    val calc = remember { CalculatorState() }
+    val calc = remember { CalculatorState(app.defaultAge) }
     // Schalter für Spielbenachrichtigungen; als Compose-Zustand, damit die Anzeige sofort mitzieht.
     var alertsOn by remember { mutableStateOf(app.alertsEnabled) }
+    // Standard-Altersklasse des Rechners; als Compose-Zustand, damit die Auswahl sofort mitzieht.
+    var defaultAge by remember { mutableStateOf(app.defaultAge) }
     // Erlaubnis für Benachrichtigungen (Android 13 und neuer). Das Ergebnis braucht es nicht: der Lauf prüft sie selbst.
     val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
@@ -286,6 +288,12 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onOpenTransfers = { stack.add(Dest.Transfers) },
                     onOpenSpieltag = { stack.add(Dest.Spieltag()) },
                     onOpenFavorites = { stack.add(Dest.Favorites) },
+                    defaultAge = defaultAge,
+                    onDefaultAgeChange = { age ->
+                        app.defaultAge = age
+                        defaultAge = age
+                        calc.age = age
+                    },
                     alertsOn = alertsOn,
                     onAlertsChange = { on ->
                         if (on && android.os.Build.VERSION.SDK_INT >= 33) {
