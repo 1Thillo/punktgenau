@@ -52,6 +52,8 @@ class CalculatorState {
     var ownText by mutableStateOf("")
     /** Q-TTR, der als Ersatz für den fehlenden TTR (ohne Premium) ins Feld kam; sonst null. */
     var ownFallbackValue: Int? by mutableStateOf(null)
+    /** Stand des Q-TTR-Ersatzwerts als Anzeige (TT.MM.JJJJ), sonst null. */
+    var ownFallbackDate: String? by mutableStateOf(null)
     var age by mutableStateOf(AgeGroup.ADULT)
     var fewSingles by mutableStateOf(false)
     var breakFlag by mutableStateOf(false)
@@ -74,7 +76,11 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {},
 
     val own = ownText.toIntOrNull()
     // Die Kennzeichnung gilt nur, solange das Feld noch genau den Q-TTR-Ersatzwert enthält.
-    val ownLabel = if (own != null && own == state.ownFallbackValue) OWN_LABEL_QTTR else OWN_LABEL_TTR
+    val ownLabel = if (own != null && own == state.ownFallbackValue) {
+        state.ownFallbackDate?.let { "Q-TTR (Stand $it, ohne Premium kein aktueller TTR)" } ?: OWN_LABEL_QTTR
+    } else {
+        OWN_LABEL_TTR
+    }
     val games = rows.mapNotNull { r -> r.opponent.toIntOrNull()?.let { Game(it, r.won) } }
     val result = own?.let { TtrCalculator.calculate(it, games, AlterationInput(age, fewSingles, breakFlag)) }
 

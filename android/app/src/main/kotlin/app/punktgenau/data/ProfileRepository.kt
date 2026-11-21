@@ -30,6 +30,8 @@ data class OwnProfile(
     val ttr: Int?,
     val qttr: Int?,
     val events: List<HistoryEvent> = emptyList(),
+    /** Tag der letzten Q-TTR-Fixierung als Anzeige (TT.MM.JJJJ); null, wenn der Server keines liefert. */
+    val qttrDate: String? = null,
 )
 
 /** Ergebnis eines Abrufs: Daten oder ein verständlicher Grund. */
@@ -51,7 +53,14 @@ class ProfileRepository(private val session: SessionManager, private val baseUrl
             val hist = session.fetch(Request.Builder().url(baseUrl.resolve("/api/ttr/history/$nu")!!).build())
             if (AuthDetector.isUnauthenticated(hist.body)) return Loaded.NeedsLogin
             val values = ProfileParser.parseHistory(hist.body)
-            Loaded.Ok(me.copy(ttr = values.first, qttr = values.second, events = ProfileParser.parseEvents(hist.body)))
+            Loaded.Ok(
+                me.copy(
+                    ttr = values.first,
+                    qttr = values.second,
+                    events = ProfileParser.parseEvents(hist.body),
+                    qttrDate = ProfileParser.qttrDate(hist.body),
+                ),
+            )
         } catch (e: java.io.IOException) {
             Loaded.Failed("Netzwerkfehler. Bitte später erneut versuchen.")
         }
@@ -75,6 +84,21 @@ object ProfileParser {
      * Liefert (ttr, q-ttr). Der Q-TTR steht in `vq_ttr`; die Website lässt das Feld oft leer und nennt den
      * zuletzt fixierten Quartalswert in `ttr_last_fixed` (mit `ttr_last_fixed_date`). Fehlende Felder bleiben null.
      */
+    /** Datum der letzten Q-TTR-Fixierung aus `ttr_last_fixed_date` (JJJJ-MM-TT), als TT.MM.JJJJ; sonst null. */
+    fun qttrDate(body: String): String? {
+        val obj = try {
+            json.parseToJsonElement(body).jsonObject
+        } catch (e: Exception) {
+            return null
+        }
+        val iso = (obj["ttr_last_fixed_date"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+        return try {
+            java.time.LocalDate.parse(iso).format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun parseHistory(body: String): Pair<Int?, Int?> {
         val obj = try {
             json.parseToJsonElement(body).jsonObject
