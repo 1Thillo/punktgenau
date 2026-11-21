@@ -159,7 +159,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     LaunchedEffect(ui) {
-        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { if (calc.ownText.isBlank()) calc.ownText = it.toString() } }
+        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { if (calc.ownText.isBlank()) { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr } } }
     }
 
     LaunchedEffect(Unit) {
@@ -198,7 +198,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     players = app.playerRepo,
                     ownNuId = (ui as? StartUi.Shown)?.profile?.nuId,
                     onAddOpponent = { calc.addOpponent(it) },
-                    onSetOwn = { calc.ownText = it.toString() },
+                    onSetOwn = { calc.ownText = it.toString(); calc.ownFallbackValue = null },
                     onClose = { pop(); tab = Tab.CALCULATOR },
                     onNeedsLogin = { loggedOut() },
                 )
@@ -223,6 +223,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onClose = { pop() },
                     onUseInCalculator = { value ->
                         calc.ownText = value.toString()
+                        calc.ownFallbackValue = null
                         stack.clear()
                         tab = Tab.CALCULATOR
                     },
@@ -284,7 +285,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     calc,
                     onLoadAppointment = { stack.add(Dest.Appointments) },
                     onResetOwn = {
-                        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString() } }
+                        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr } }
                     },
                 )
                 Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown, state = leagueTab, links = links)
