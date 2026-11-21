@@ -92,7 +92,9 @@ fun StartScreen(
                     val last = p.events.lastOrNull { it.type == "meeting" }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (p.ttr != null && p.qttr != null) Pill("Q-TTR ${p.qttr}")
-                        if (p.ttr == null && p.qttr != null) Pill("TTR nicht geliefert")
+                        if (p.ttr == null && p.qttr != null) {
+                            Pill(p.qttrDate?.let { "TTR nicht geliefert · Stand $it" } ?: "TTR nicht geliefert")
+                        }
                         if (last != null) {
                             val (txt, color) = deltaText(last.delta)
                             Pill("Zuletzt $txt", color = color.copy(alpha = 0.12f), textColor = color)

@@ -168,7 +168,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     }
 
     LaunchedEffect(ui) {
-        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { if (calc.ownText.isBlank()) { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr } } }
+        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { if (calc.ownText.isBlank()) { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr; calc.ownFallbackDate = if (p.ttr != null) null else p.qttrDate } } }
     }
 
     LaunchedEffect(Unit) {
@@ -207,7 +207,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     players = app.playerRepo,
                     ownNuId = (ui as? StartUi.Shown)?.profile?.nuId,
                     onAddOpponent = { calc.addOpponent(it) },
-                    onSetOwn = { calc.ownText = it.toString(); calc.ownFallbackValue = null },
+                    onSetOwn = { calc.ownText = it.toString(); calc.ownFallbackValue = null; calc.ownFallbackDate = null },
                     onClose = { pop(); tab = Tab.CALCULATOR },
                     onNeedsLogin = { loggedOut() },
                 )
@@ -235,6 +235,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onUseInCalculator = { value ->
                         calc.ownText = value.toString()
                         calc.ownFallbackValue = null
+                        calc.ownFallbackDate = null
                         stack.clear()
                         tab = Tab.CALCULATOR
                     },
@@ -302,7 +303,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     calc,
                     onLoadAppointment = { stack.add(Dest.Appointments) },
                     onResetOwn = {
-                        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr } }
+                        (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr; calc.ownFallbackDate = if (p.ttr != null) null else p.qttrDate } }
                     },
                     onDefaultAgeChange = { age -> app.defaultAge = age },
                 )
