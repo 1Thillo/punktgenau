@@ -312,6 +312,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
                     advanced = app.advancedSearch,
+                    history = app.searchHistory,
                     onViewPlayer = { hit -> hit.nuId?.let { stack.add(Dest.Player(PlayerLink(it, hit.displayName, club = hit.club))) } },
                     onAddToCalculator = { calc.addOpponent(it); tab = Tab.CALCULATOR },
                     onNeedsLogin = { ui = StartUi.LoggedOut; tab = Tab.START },
