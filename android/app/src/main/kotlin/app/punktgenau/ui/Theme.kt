@@ -16,21 +16,23 @@ import androidx.compose.ui.unit.sp
 /** Darstellung: hell ist der Standard, dunkel nur auf Wunsch (oder nach System). */
 enum class ThemeMode(val label: String) { LIGHT("Hell"), SYSTEM("System"), DARK("Dunkel") }
 
-private val Orange = Color(0xFFE8650A)
-private val OrangeSoft = Color(0xFFFFEDE0)
-private val Ink = Color(0xFF1B1F23)
-private val InkSoft = Color(0xFF5B646C)
-private val Paper = Color(0xFFF4F3F0)
+/** Tischtennis-Grün-Teal als Hauptfarbe, Limette als Akzent (wie der Ball auf der Platte). */
+private val Teal = Color(0xFF0D6E69)
+private val TealSoft = Color(0xFFCDEFEA)
+private val Lime = Color(0xFFE3F5A0)
+private val Ink = Color(0xFF14201F)
+private val InkSoft = Color(0xFF55636A)
+private val Paper = Color(0xFFF1F5F3)
 
 val PositiveGreen = Color(0xFF14804A)
 val NegativeRed = Color(0xFFC62828)
 val NeutralGrey = Color(0xFF6B747C)
 
 private val Light = lightColorScheme(
-    primary = Orange,
+    primary = Teal,
     onPrimary = Color.White,
-    primaryContainer = OrangeSoft,
-    onPrimaryContainer = Color(0xFF5A2300),
+    primaryContainer = TealSoft,
+    onPrimaryContainer = Color(0xFF03302D),
     background = Paper,
     onBackground = Ink,
     surface = Color.White,
@@ -41,15 +43,15 @@ private val Light = lightColorScheme(
     outlineVariant = Color(0xFFE6E3DD),
     surfaceContainerLow = Color(0xFFFAFAF8),
     surfaceContainer = Color(0xFFF1F0EC),
-    secondaryContainer = OrangeSoft,
-    onSecondaryContainer = Color(0xFF5A2300),
+    secondaryContainer = Lime,
+    onSecondaryContainer = Color(0xFF243000),
 )
 
 private val Dark = darkColorScheme(
-    primary = Color(0xFFFF8A3D),
-    onPrimary = Color(0xFF2A1400),
-    primaryContainer = Color(0xFF4A2A12),
-    onPrimaryContainer = Color(0xFFFFE2CC),
+    primary = Color(0xFF6FD6CB),
+    onPrimary = Color(0xFF003733),
+    primaryContainer = Color(0xFF0F4F4A),
+    onPrimaryContainer = Color(0xFFB5F2EA),
     background = Color(0xFF15181B),
     onBackground = Color(0xFFF2F2F0),
     surface = Color(0xFF1F2327),
@@ -60,8 +62,8 @@ private val Dark = darkColorScheme(
     outlineVariant = Color(0xFF2F353B),
     surfaceContainerLow = Color(0xFF1A1E22),
     surfaceContainer = Color(0xFF232830),
-    secondaryContainer = Color(0xFF4A2A12),
-    onSecondaryContainer = Color(0xFFFFE2CC),
+    secondaryContainer = Color(0xFF3D4A14),
+    onSecondaryContainer = Color(0xFFE3F5A0),
 )
 
 private val AppTypography = Typography(

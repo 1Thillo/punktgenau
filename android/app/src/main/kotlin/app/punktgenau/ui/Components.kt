@@ -6,10 +6,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,13 +31,16 @@ import androidx.compose.ui.unit.dp
 /** Weiße Karte mit feinem Rand, die Grundfläche aller Listen und Blöcke. */
 @Composable
 fun AppCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    // Hell: weicher Schatten statt Rand. Dunkel: feiner Rand, weil Schatten dort kaum sichtbar ist.
+    val border = if (dark) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
+    val elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 3.dp)
     val inner: @Composable ColumnScope.() -> Unit = { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content) }
     if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), colors = colors, border = border, shape = MaterialTheme.shapes.medium, content = inner)
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), colors = colors, elevation = elevation, border = border, shape = MaterialTheme.shapes.medium, content = inner)
     } else {
-        Card(modifier = modifier.fillMaxWidth(), colors = colors, border = border, shape = MaterialTheme.shapes.medium, content = inner)
+        Card(modifier = modifier.fillMaxWidth(), colors = colors, elevation = elevation, border = border, shape = MaterialTheme.shapes.medium, content = inner)
     }
 }
 
@@ -66,9 +74,14 @@ fun DateBadge(day: String, year: String) {
     }
 }
 
+/** Überschrift mit kurzem Akzentstrich, gibt jedem Bildschirm die gleiche Kopfzeile. */
 @Composable
 fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, modifier = modifier.padding(top = 8.dp))
+    Column(modifier.padding(top = 12.dp)) {
+        Box(Modifier.width(36.dp).height(5.dp).clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.primary))
+        Spacer(Modifier.height(12.dp))
+        Text(text, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+    }
 }
 
 @Composable
