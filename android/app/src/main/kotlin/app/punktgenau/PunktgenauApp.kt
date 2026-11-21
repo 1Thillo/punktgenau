@@ -38,6 +38,11 @@ class PunktgenauApp : Application() {
     val advancedSearch by lazy { app.punktgenau.data.AdvancedSearchRepository(session, baseUrl) }
     val profiles by lazy { ProfileRepository(session, baseUrl) }
 
+    /** Standard-Altersklasse des Rechners; gilt beim Start der App und wird in den Einstellungen gesetzt. */
+    var defaultAge: app.punktgenau.domain.AgeGroup
+        get() = app.punktgenau.domain.parseAgeGroup(prefs.getString("default_age", null))
+        set(value) { prefs.edit().putString("default_age", value.name).apply() }
+
     /** Letzte Namenssuchen, lokal auf dem Gerät. */
     val searchHistory by lazy { app.punktgenau.data.SearchHistory(getSharedPreferences("search", MODE_PRIVATE)) }
 

@@ -115,7 +115,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
     val leagueTab = remember { LeagueNavState() }
     var ui by remember { mutableStateOf<StartUi>(StartUi.Loading) }
     val scope = rememberCoroutineScope()
-    val calc = remember { CalculatorState() }
+    val calc = remember { CalculatorState(app.defaultAge) }
     // Schalter für Spielbenachrichtigungen; als Compose-Zustand, damit die Anzeige sofort mitzieht.
     var alertsOn by remember { mutableStateOf(app.alertsEnabled) }
     // Erlaubnis für Benachrichtigungen (Android 13 und neuer). Das Ergebnis braucht es nicht: der Lauf prüft sie selbst.
@@ -304,6 +304,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onResetOwn = {
                         (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr } }
                     },
+                    onDefaultAgeChange = { age -> app.defaultAge = age },
                 )
                 Tab.LEAGUE -> LeagueScreen(
                     app.clickTt,
