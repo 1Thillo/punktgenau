@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/1Thillo/punktgenau/compare/v0.3.0...v0.4.0) (2026-11-21)
+
+
+### Features
+
+* **favoriten:** Mannschaft merken, Werte und Verlauf in der Liste zeigen ([58e966e](https://github.com/1Thillo/punktgenau/commit/58e966e43f576cc58c5a3666d5e1f33f6d6bef6b))
+* **favoriten:** Spielerinnen und Spieler als Favoriten speichern ([f5cd76f](https://github.com/1Thillo/punktgenau/commit/f5cd76fb24502e9c5091c8b1737f709cd772acbc))
+* **favoriten:** Spielerinnen und Spieler als Favoriten speichern ([7e8651b](https://github.com/1Thillo/punktgenau/commit/7e8651bc6cbeea902b12bb6f797ab59a03361cf5))
+* **rechner:** Q-TTR ohne Premium im eigenen TTR-Feld kennzeichnen ([272ee18](https://github.com/1Thillo/punktgenau/commit/272ee185bda0e0c9f78fc4e60ef4477904f6592c))
+* **rechner:** Q-TTR ohne Premium im eigenen TTR-Feld kennzeichnen ([7155651](https://github.com/1Thillo/punktgenau/commit/71556519fbfd838bee17d84c6e8eb2a98aa2218a))
+
 ## [0.3.0](https://github.com/1Thillo/punktgenau/compare/v0.2.0...v0.3.0) (2026-11-15)
 
 
