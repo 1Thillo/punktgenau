@@ -43,6 +43,7 @@ fun StartScreen(
     onOpenClub: () -> Unit,
     onOpenTransfers: () -> Unit,
     onOpenSpieltag: () -> Unit,
+    onOpenFavorites: () -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -96,6 +97,7 @@ fun StartScreen(
                     Button(onOpenCalculator, Modifier.weight(1f)) { Text("Rechner") }
                     OutlinedButton(onOpenHistory, Modifier.weight(1f)) { Text("Verlauf") }
                 }
+                OutlinedButton(onOpenFavorites, Modifier.fillMaxWidth()) { Text("Favoriten") }
                 OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
                 OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
                 OutlinedButton(onOpenSpieltag, Modifier.fillMaxWidth()) { Text("Spieltag") }

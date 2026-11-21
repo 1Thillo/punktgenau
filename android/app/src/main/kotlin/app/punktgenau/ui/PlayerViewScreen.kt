@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.punktgenau.data.ClubRepository
+import app.punktgenau.data.FavoriteStore
 import app.punktgenau.data.GroupRef
 import app.punktgenau.data.MatchFinder
 import app.punktgenau.data.PlayerHistoryOutcome
@@ -80,10 +81,12 @@ fun PlayerViewScreen(
     finder: MatchFinder,
     player: PlayerLink,
     links: Links,
+    favorites: FavoriteStore,
     onClose: () -> Unit,
     onUseInCalculator: (Int) -> Unit,
 ) {
     var outcome by remember { mutableStateOf<PlayerHistoryOutcome?>(null) }
+    var isFavorite by remember(player.nuId) { mutableStateOf(favorites.contains(player.nuId)) }
     // Vereinsnummer: aus dem Zusammenhang (Rangliste, Mannschaft, Spielbericht), sonst über die Vereinssuche nach dem Namen.
     var clubNr by remember { mutableStateOf(player.clubNr ?: player.team?.clubNr) }
     var association by remember { mutableStateOf(player.team?.group?.association ?: "RTTVR") }
@@ -97,12 +100,29 @@ fun PlayerViewScreen(
             clubs.findClub(name)?.let { clubNr = it.clubNr; association = it.association }
         }
     }
+    // Findet die Suche genau eine Mannschaft, merkt sich ein Favorit diese; beim nächsten Öffnen gibt es dann den direkten Verweis.
+    LaunchedEffect(teamSearch) {
+        val found = (teamSearch as? TeamSearch.Found)?.teams?.singleOrNull()
+        if (found != null && isFavorite) favorites.add(player.copy(club = clubName, clubNr = clubNr, team = found))
+    }
     BackHandler(onBack = onClose)
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         TextButton(onClose) { Text("Zurück") }
         ScreenTitle("Sicht von ${player.name}")
         clubName?.let { InfoText(it) }
+        OutlinedButton(
+            {
+                if (isFavorite) {
+                    favorites.remove(player.nuId)
+                } else {
+                    val team = player.team ?: (teamSearch as? TeamSearch.Found)?.teams?.singleOrNull()
+                    favorites.add(player.copy(club = clubName, clubNr = clubNr, team = team))
+                }
+                isFavorite = !isFavorite
+            },
+            Modifier.fillMaxWidth(),
+        ) { Text(if (isFavorite) "★ Aus Favoriten entfernen" else "☆ Als Favorit merken") }
         clubNr?.let { nr ->
             OutlinedButton({ links.club(nr) }, Modifier.fillMaxWidth()) { Text("Verein ansehen") }
         }
