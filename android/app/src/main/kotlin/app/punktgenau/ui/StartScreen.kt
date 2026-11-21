@@ -124,11 +124,13 @@ fun StartScreen(
                     Text(main?.toString() ?: "–", fontSize = 88.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2).sp, color = on)
                     val last = p.events.lastOrNull { it.type == "meeting" }
                     // Statusstreifen: drei Werte nebeneinander in einer hellen Leiste im Hero.
+                    // Ohne TTR zeigt das Q-TTR-Feld den Stand des Werts an.
+                    val qttrLabel = if (p.ttr == null && p.qttrDate != null) "Q-TTR · Stand ${p.qttrDate}" else "Q-TTR"
                     Row(
                         Modifier.fillMaxWidth().padding(top = 14.dp).clip(MaterialTheme.shapes.medium).background(Color.White.copy(alpha = 0.16f)).padding(vertical = 12.dp, horizontal = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        StatCell("Q-TTR", p.qttr?.toString() ?: "–", on)
+                        StatCell(qttrLabel, p.qttr?.toString() ?: "–", on)
                         StatCell("Zuletzt", last?.let { deltaText(it.delta).first } ?: "–", on)
                         StatCell("Einträge", p.events.size.toString(), on)
                     }

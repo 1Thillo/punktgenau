@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/1Thillo/punktgenau/compare/v0.7.0...v0.8.0) (2026-11-21)
+
+
+### Features
+
+* **profil:** Stand des Q-TTR anzeigen ([deae005](https://github.com/1Thillo/punktgenau/commit/deae00598b184cc826c8db3097e28a1eee45ec0b))
+
 ## [0.7.0](https://github.com/1Thillo/punktgenau/compare/v0.6.0...v0.7.0) (2026-11-21)
 
 
