@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/1Thillo/punktgenau/compare/v0.6.0...v0.7.0) (2026-11-21)
+
+
+### Features
+
+* **rechner:** Standard-Altersklasse in den Einstellungen festlegen ([e0bbc6a](https://github.com/1Thillo/punktgenau/commit/e0bbc6a7d91d66ede1a58f2eae3cd655eb63905c))
+* **rechner:** Standard-Altersklasse in den Einstellungen festlegen ([9899678](https://github.com/1Thillo/punktgenau/commit/9899678dc28ec5c229217a75b344ba50515e2b6b))
+
 ## [0.6.0](https://github.com/1Thillo/punktgenau/compare/v0.5.0...v0.6.0) (2026-11-21)
 
 
