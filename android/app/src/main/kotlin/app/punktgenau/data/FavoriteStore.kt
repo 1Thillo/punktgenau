@@ -18,8 +18,8 @@ class FavoriteStore(private val storage: StringSetStorage) {
 
     fun contains(nuId: String): Boolean = load().any { it.nuId == nuId }
 
-    /** Merkt die Person; ein vorhandener Eintrag mit derselben Kennung wird ersetzt. Die Mannschaft wird nicht gespeichert. */
-    fun add(player: PlayerLink) = save(load().filter { it.nuId != player.nuId } + player.copy(team = null))
+    /** Merkt die Person samt Mannschaft (falls bekannt); ein vorhandener Eintrag mit derselben Kennung wird ersetzt. */
+    fun add(player: PlayerLink) = save(load().filter { it.nuId != player.nuId } + player)
 
     fun remove(nuId: String) = save(load().filter { it.nuId != nuId })
 
@@ -41,21 +41,40 @@ class FavoriteStore(private val storage: StringSetStorage) {
 
         private fun clean(s: String?): String = s.orEmpty().replace(SEP, " ").replace("\n", " ")
 
-        internal fun encode(p: PlayerLink): String =
-            listOf(p.nuId, p.name, p.club, p.clubNr).joinToString(SEP) { clean(it) }
+        /**
+         * Felder: Kennung, Name, Verein, Vereinsnummer, danach die Mannschaft (Verband, Saison, Gruppe, Liga,
+         * Mannschafts-Kennung, Mannschaftsname, Vereinsnummer der Mannschaft). Ohne Mannschaft bleiben diese leer.
+         */
+        internal fun encode(p: PlayerLink): String {
+            val t = p.team
+            return listOf(
+                p.nuId, p.name, p.club, p.clubNr,
+                t?.group?.association, t?.group?.season, t?.group?.groupId, t?.group?.name,
+                t?.teamId, t?.name, t?.clubNr,
+            ).joinToString(SEP) { clean(it) }
+        }
 
         internal fun decode(s: String): PlayerLink? {
             val parts = s.split(SEP)
             if (parts.size < 2 || parts[0].isBlank()) return null
-            return PlayerLink(
-                nuId = parts[0],
-                name = parts[1],
-                club = parts.getOrNull(2)?.ifBlank { null },
-                clubNr = parts.getOrNull(3)?.ifBlank { null },
-            )
+            fun at(i: Int) = parts.getOrNull(i)?.ifBlank { null }
+            val association = at(4)
+            val season = at(5)
+            val groupId = at(6)
+            val teamId = at(8)
+            // Einträge aus der ersten Version haben nur vier Felder; dann ist keine Mannschaft bekannt.
+            val team = if (association != null && season != null && groupId != null && teamId != null) {
+                TeamRef(GroupRef(association, season, groupId, at(7) ?: at(9).orEmpty()), teamId, at(9).orEmpty(), at(10))
+            } else {
+                null
+            }
+            return PlayerLink(nuId = parts[0], name = parts[1], club = at(2), clubNr = at(3), team = team)
         }
     }
 }
+
+/** Die gespeicherte Mannschaft gilt nur in ihrer Saison; aus einer anderen Saison wird sie weggelassen. */
+fun PlayerLink.teamOnlyIn(season: String): PlayerLink = if (team?.group?.season == season) this else copy(team = null)
 
 private class SharedPrefsStringSet(private val prefs: SharedPreferences, private val key: String) : StringSetStorage {
     // Kopie: Die von getStringSet gelieferte Menge darf nicht verändert werden.

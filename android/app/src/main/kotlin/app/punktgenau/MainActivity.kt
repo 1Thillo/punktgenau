@@ -206,7 +206,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                 )
                 Dest.Transfers -> TransferScreen(app.transfers, association = "RTTVR", onClose = { pop() })
                 Dest.Follow -> FollowScreen(app.clubs, app.follow, onClose = { pop() })
-                Dest.Favorites -> FavoritesScreen(app.favorites, onOpen = { links.player(it) }, onClose = { pop() })
+                Dest.Favorites -> FavoritesScreen(app.favorites, app.playerRepo, onOpen = { links.player(it) }, onClose = { pop() })
                 is Dest.Spieltag -> SpieltagScreen(
                     app.spieltag,
                     state = top.state,

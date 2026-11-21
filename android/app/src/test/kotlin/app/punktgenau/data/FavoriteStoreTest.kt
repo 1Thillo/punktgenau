@@ -57,10 +57,28 @@ class FavoriteStoreTest {
         assertFalse(store.contains("NU100"))
     }
 
-    @Test fun mannschaftWirdNichtGespeichert() {
-        val team = TeamRef(GroupRef("RTTVR", "25/26", "1", "Kreisliga"), "9", "TTC Musterstadt II")
+    private val team = TeamRef(GroupRef("RTTVR", "26/27", "1", "Kreisliga"), "9", "TTC Musterstadt II", "123")
+
+    @Test fun mannschaftWirdGespeichert() {
         store.add(anna.copy(team = team))
+        assertEquals(team, store.load().single().team)
+    }
+
+    @Test fun ohneMannschaft_bleibtSieLeer() {
+        store.add(anna)
         assertNull(store.load().single().team)
+    }
+
+    @Test fun altesFormatOhneMannschaft_wirdGelesen() {
+        storage.values = setOf("NU100\tAnna Berg\tTTC Musterstadt\t123")
+        assertEquals(anna, store.load().single())
+    }
+
+    @Test fun mannschaftNurInIhrerSaison() {
+        val p = anna.copy(team = team)
+        assertEquals(team, p.teamOnlyIn("26/27").team)
+        assertNull(p.teamOnlyIn("27/28").team)
+        assertNull(anna.teamOnlyIn("26/27").team)
     }
 
     @Test fun trennzeichenImNamen_werdenErsetzt() {
