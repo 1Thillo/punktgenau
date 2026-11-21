@@ -3,6 +3,7 @@ package app.punktgenau.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +37,11 @@ sealed interface StartUi {
 }
 
 /** Startbildschirm. Zum Aktualisieren nach unten ziehen. */
+@Composable
+private fun NavLabel(text: String) {
+    Text(text, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartScreen(
@@ -84,11 +91,11 @@ fun StartScreen(
                 val main = p.ttr ?: p.qttr
                 AppCard {
                     Text(
-                        if (p.ttr != null) "Dein TTR" else "Dein Q-TTR",
-                        style = MaterialTheme.typography.bodyMedium,
+                        if (p.ttr != null) "DEIN TTR" else "DEIN Q-TTR",
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(main?.toString() ?: "–", fontSize = 84.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(main?.toString() ?: "–", fontSize = 84.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.5).sp, color = MaterialTheme.colorScheme.onSurface)
                     val last = p.events.lastOrNull { it.type == "meeting" }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (p.ttr != null && p.qttr != null) Pill("Q-TTR ${p.qttr}")
@@ -99,9 +106,12 @@ fun StartScreen(
                         }
                     }
                 }
-                OutlinedButton(onOpenFavorites, Modifier.fillMaxWidth()) { Text("Favoriten") }
-                OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
-                OutlinedButton(onOpenSpieltag, Modifier.fillMaxWidth()) { Text("Spieltag") }
+                val navPadding = PaddingValues(horizontal = 6.dp)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(onOpenFavorites, Modifier.weight(1f), contentPadding = navPadding) { NavLabel("Favoriten") }
+                    FilledTonalButton(onOpenClub, Modifier.weight(1f), contentPadding = navPadding) { NavLabel("Verein") }
+                    FilledTonalButton(onOpenSpieltag, Modifier.weight(1f), contentPadding = navPadding) { NavLabel("Spieltag") }
+                }
             }
         }
         SectionLabel("Benachrichtigungen")

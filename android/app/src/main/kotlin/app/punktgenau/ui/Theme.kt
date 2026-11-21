@@ -20,7 +20,7 @@ private val Orange = Color(0xFFE8650A)
 private val OrangeSoft = Color(0xFFFFEDE0)
 private val Ink = Color(0xFF1B1F23)
 private val InkSoft = Color(0xFF5B646C)
-private val Paper = Color(0xFFF6F5F2)
+private val Paper = Color(0xFFF4F3F0)
 
 val PositiveGreen = Color(0xFF14804A)
 val NegativeRed = Color(0xFFC62828)
@@ -35,10 +35,12 @@ private val Light = lightColorScheme(
     onBackground = Ink,
     surface = Color.White,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFEDEBE6),
+    surfaceVariant = Color(0xFFECEAE5),
     onSurfaceVariant = InkSoft,
-    outline = Color(0xFFC9C6BF),
-    outlineVariant = Color(0xFFE4E1DB),
+    outline = Color(0xFFBDB9B1),
+    outlineVariant = Color(0xFFE6E3DD),
+    surfaceContainerLow = Color(0xFFFAFAF8),
+    surfaceContainer = Color(0xFFF1F0EC),
     secondaryContainer = OrangeSoft,
     onSecondaryContainer = Color(0xFF5A2300),
 )
@@ -55,25 +57,28 @@ private val Dark = darkColorScheme(
     surfaceVariant = Color(0xFF2B3035),
     onSurfaceVariant = Color(0xFFC9CED2),
     outline = Color(0xFF8A939A),
-    outlineVariant = Color(0xFF3A4046),
+    outlineVariant = Color(0xFF2F353B),
+    surfaceContainerLow = Color(0xFF1A1E22),
+    surfaceContainer = Color(0xFF232830),
     secondaryContainer = Color(0xFF4A2A12),
     onSecondaryContainer = Color(0xFFFFE2CC),
 )
 
 private val AppTypography = Typography(
-    headlineMedium = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold),
-    titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
+    headlineMedium = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp),
+    titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp),
     titleMedium = TextStyle(fontSize = 17.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold),
     bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 23.sp),
     bodyMedium = TextStyle(fontSize = 15.sp, lineHeight = 21.sp),
     bodySmall = TextStyle(fontSize = 13.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+    labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.4.sp),
 )
 
 private val AppShapes = Shapes(
-    small = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
 )
 
 @Composable

@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 fun AppCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    val inner: @Composable ColumnScope.() -> Unit = { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content) }
+    val inner: @Composable ColumnScope.() -> Unit = { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content) }
     if (onClick != null) {
         Card(onClick = onClick, modifier = modifier.fillMaxWidth(), colors = colors, border = border, shape = MaterialTheme.shapes.medium, content = inner)
     } else {
@@ -40,7 +40,7 @@ fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun SectionLabel(text: String) {
-    Text(text.uppercase(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+    Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp, bottom = 2.dp))
 }
 
 /** Kleines Etikett (z. B. "ÄK 16"). */
