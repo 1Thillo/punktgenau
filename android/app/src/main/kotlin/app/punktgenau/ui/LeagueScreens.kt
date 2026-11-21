@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -78,6 +79,7 @@ fun LeagueScreen(
     state: LeagueNavState,
     links: Links,
     onBack: (() -> Unit)? = null,
+    onOpenTransfers: (() -> Unit)? = null,
 ) {
     val initial = state.initial
     var nav by state::nav
@@ -105,6 +107,9 @@ fun LeagueScreen(
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
         if (nav != Nav.Home || onBack != null) {
             TextButton({ if (nav == Nav.Home || (initial != null && nav == Nav.Hub(initial))) onBack?.invoke() else nav = back(nav) }) { Text("Zurück") }
+        }
+        if (nav == Nav.Home && onOpenTransfers != null) {
+            OutlinedButton(onOpenTransfers, Modifier.fillMaxWidth()) { Text("Wechselliste") }
         }
         when (val n = nav) {
             Nav.Home -> LeagueHome(myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onOpenTeam = links.team, onChoose = { nav = Nav.Districts })
