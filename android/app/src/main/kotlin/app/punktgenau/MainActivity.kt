@@ -280,10 +280,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onLogin = { showLogin = true },
                     onRefresh = { refresh() },
                     onLogout = { app.session.logout(); ui = StartUi.LoggedOut },
-                    onOpenHistory = { tab = Tab.HISTORY },
-                    onOpenCalculator = { tab = Tab.CALCULATOR },
                     onOpenClub = { scope.launch { app.teams.ownClubNr()?.let { stack.add(Dest.Club(it)) } } },
-                    onOpenTransfers = { stack.add(Dest.Transfers) },
                     onOpenSpieltag = { stack.add(Dest.Spieltag()) },
                     onOpenFavorites = { stack.add(Dest.Favorites) },
                     alertsOn = alertsOn,
@@ -308,7 +305,15 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                         (ui as? StartUi.Shown)?.profile?.let { p -> (p.ttr ?: p.qttr)?.let { calc.ownText = it.toString(); calc.ownFallbackValue = if (p.ttr != null) null else p.qttr } }
                     },
                 )
-                Tab.LEAGUE -> LeagueScreen(app.clickTt, app.teams, app.playerRepo, loggedIn = ui is StartUi.Shown, state = leagueTab, links = links)
+                Tab.LEAGUE -> LeagueScreen(
+                    app.clickTt,
+                    app.teams,
+                    app.playerRepo,
+                    loggedIn = ui is StartUi.Shown,
+                    state = leagueTab,
+                    links = links,
+                    onOpenTransfers = { stack.add(Dest.Transfers) },
+                )
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
                     advanced = app.advancedSearch,
