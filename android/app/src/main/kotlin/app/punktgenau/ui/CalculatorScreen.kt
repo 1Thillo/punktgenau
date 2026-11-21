@@ -44,9 +44,14 @@ class GameRow(opponent: String = "", won: Boolean = false) {
     var won by mutableStateOf(won)
 }
 
+const val OWN_LABEL_TTR = "Eigener TTR"
+const val OWN_LABEL_QTTR = "Q-TTR (ohne Premium kein aktueller TTR)"
+
 /** Zustand des Rechners; wird von mehreren Screens genutzt (Suche fügt Gegner hinzu). */
 class CalculatorState {
     var ownText by mutableStateOf("")
+    /** Q-TTR, der als Ersatz für den fehlenden TTR (ohne Premium) ins Feld kam; sonst null. */
+    var ownFallbackValue: Int? by mutableStateOf(null)
     var age by mutableStateOf(AgeGroup.ADULT)
     var fewSingles by mutableStateOf(false)
     var breakFlag by mutableStateOf(false)
@@ -68,6 +73,8 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {},
     val rows = state.rows
 
     val own = ownText.toIntOrNull()
+    // Die Kennzeichnung gilt nur, solange das Feld noch genau den Q-TTR-Ersatzwert enthält.
+    val ownLabel = if (own != null && own == state.ownFallbackValue) OWN_LABEL_QTTR else OWN_LABEL_TTR
     val games = rows.mapNotNull { r -> r.opponent.toIntOrNull()?.let { Game(it, r.won) } }
     val result = own?.let { TtrCalculator.calculate(it, games, AlterationInput(age, fewSingles, breakFlag)) }
 
@@ -107,7 +114,7 @@ fun CalculatorScreen(state: CalculatorState, onLoadAppointment: () -> Unit = {},
             OutlinedTextField(
                 value = ownText,
                 onValueChange = { ownText = it.filter(Char::isDigit).take(4) },
-                label = { Text("Eigener TTR") },
+                label = { Text(ownLabel) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
