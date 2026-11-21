@@ -1,5 +1,7 @@
 package app.punktgenau.ui
 
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,13 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,12 +95,10 @@ fun SpieltagScreen(
     val dayMatches = list.filter { it.day == day }
     val context = LocalContext.current
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BackBar(onClose) { AccentAction("Mannschaften merken", onOpenFollow) }
         ScreenTitle("Spieltag")
         InfoText("Spiele deiner Mannschaften und der gemerkten.")
-        OutlinedButton(onOpenFollow, Modifier.fillMaxWidth()) { Text("Mannschaften merken") }
-        Spacer(Modifier.height(8.dp))
         val f = failed
         val m = state.matches
         if (f != null) {
@@ -111,37 +108,50 @@ fun SpieltagScreen(
         } else if (days.isEmpty()) {
             InfoText("Keine Spiele gefunden.")
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton({ state.index = (state.index - 1).coerceAtLeast(0) }, enabled = state.index > 0) { Text("◀") }
-                Text(
-                    day?.let { fmtDay(it) }.orEmpty(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton({ state.index = (state.index + 1).coerceAtMost(days.lastIndex) }, enabled = state.index < days.lastIndex) { Text("▶") }
-            }
-            OutlinedButton(
-                { state.index = Spieltag.startIndex(days, LocalDate.now()) },
-                Modifier.fillMaxWidth(),
-            ) { Text("Heute / nächster Spieltag") }
-            OutlinedButton(
-                {
-                    val termine = dayMatches.mapNotNull { SpieltagKalender.termin(it) }
-                    if (termine.isNotEmpty()) {
-                        oeffneKalender(context, kalenderDateiname("spieltag", day.toString()), SpieltagKalender.ics(termine))
+            HeroCard {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    HeroChoice("◀", if (state.index > 0) ({ state.index = (state.index - 1).coerceAtLeast(0) }) else null, arrow = false)
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "SPIELTAG ${state.index + 1} VON ${days.size}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.85f),
+                        )
+                        Text(
+                            day?.let { fmtDay(it) }.orEmpty(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            if (dayMatches.size == 1) "1 Spiel" else "${dayMatches.size} Spiele",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.85f),
+                        )
                     }
-                },
-                Modifier.fillMaxWidth(),
-                enabled = dayMatches.any { SpieltagKalender.termin(it) != null },
-            ) { Text("Spieltag in den Kalender") }
-            Spacer(Modifier.height(8.dp))
+                    HeroChoice("▶", if (state.index < days.lastIndex) ({ state.index = (state.index + 1).coerceAtMost(days.lastIndex) }) else null, arrow = false)
+                }
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HeroChoice("Heute / nächster", { state.index = Spieltag.startIndex(days, LocalDate.now()) }, Modifier.weight(1f), arrow = false)
+                    HeroChoice(
+                        "In den Kalender",
+                        if (dayMatches.any { SpieltagKalender.termin(it) != null }) ({
+                            val termine = dayMatches.mapNotNull { SpieltagKalender.termin(it) }
+                            if (termine.isNotEmpty()) {
+                                oeffneKalender(context, kalenderDateiname("spieltag", day.toString()), SpieltagKalender.ics(termine))
+                            }
+                        }) else null,
+                        Modifier.weight(1f),
+                        arrow = false,
+                    )
+                }
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dayMatches.isEmpty()) item { InfoText("Keine Spiele an diesem Tag.") }
                 items(dayMatches) { match -> MatchCard(match, links) }
                 item {
-                    OutlinedButton({ reload++ }, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
+                    FilledTonalButton({ reload++ }, Modifier.fillMaxWidth()) { Text("Aktualisieren") }
                     Spacer(Modifier.height(16.dp))
                 }
             }
@@ -162,48 +172,44 @@ private fun MatchCard(match: SpieltagMatch, links: Links) {
     val home = report?.home ?: if (a.home == false) TeamRef(own.group, a.opponentTeamId, a.opponentName) else own
     val away = report?.away ?: if (a.home == false) own else TeamRef(own.group, a.opponentTeamId, a.opponentName)
     AppCard(onClick = report?.let { r -> { links.report(r) } }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 team.league.orEmpty() + (match.time?.let { " · $it Uhr" }.orEmpty()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            if (running) {
-                Text(
-                    if (a.live) "LIVE" else "läuft",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Text(a.result ?: "–", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (running) LivePill(if (a.live) "LIVE" else "läuft")
         }
-        Spacer(Modifier.height(6.dp))
-        // Mit Spielbericht führt die ganze Karte dorthin (beide Mannschaften stehen dort); sonst öffnet der Name die Mannschaft.
-        TeamLine(home.name, bold = home.teamId == team.id, onClick = if (report == null) ({ links.team(home) }) else null)
-        TeamLine(away.name, bold = away.teamId == team.id, onClick = if (report == null) ({ links.team(away) }) else null)
-        if (report != null) {
-            Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Mit Spielbericht führt die ganze Karte dorthin (beide Mannschaften stehen dort); sonst öffnet der Name die Mannschaft.
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                TeamLine(home.name, bold = home.teamId == team.id, onClick = if (report == null) ({ links.team(home) }) else null)
+                TeamLine(away.name, bold = away.teamId == team.id, onClick = if (report == null) ({ links.team(away) }) else null)
+            }
+            ScoreBox(a.result ?: "–", strong = a.result != null)
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (running) "Live-Spielbericht öffnen" else "Spielbericht öffnen",
+                if (report == null) "" else if (running) "Live-Spielbericht öffnen ›" else "Spielbericht öffnen ›",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            AccentAction(
+                "In den Kalender",
+                {
+                    SpieltagKalender.termin(match, now)?.let { t ->
+                        oeffneKalender(
+                            context,
+                            kalenderDateiname("spiel", t.start.toLocalDate().toString(), t.home, t.away),
+                            SpieltagKalender.ics(listOf(t)),
+                        )
+                    }
+                },
+                enabled = SpieltagKalender.termin(match, now) != null,
             )
         }
-        TextButton(
-            {
-                SpieltagKalender.termin(match, now)?.let { t ->
-                    oeffneKalender(
-                        context,
-                        kalenderDateiname("spiel", t.start.toLocalDate().toString(), t.home, t.away),
-                        SpieltagKalender.ics(listOf(t)),
-                    )
-                }
-            },
-            enabled = SpieltagKalender.termin(match, now) != null,
-        ) { Text("In den Kalender") }
     }
 }
 

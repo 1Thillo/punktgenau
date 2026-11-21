@@ -14,6 +14,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +41,32 @@ sealed interface StartUi {
 }
 
 /** Startbildschirm. Zum Aktualisieren nach unten ziehen. */
+/** Ein Wert im Statusstreifen: klein beschriftet, groß dargestellt. */
+@Composable
+private fun StatCell(label: String, value: String, color: Color) {
+    Column {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = color.copy(alpha = 0.8f))
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = color)
+    }
+}
+
+/** Kachel für die Sprünge vom Startbildschirm; Pfeil und Text stehen links, nie gequetscht. */
+@Composable
+private fun NavTile(text: String, onClick: () -> Unit, modifier: Modifier) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("→", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            Text(text, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartScreen(
@@ -82,28 +114,32 @@ fun StartScreen(
                 val p = ui.profile
                 ScreenTitle(if (p.name != null) "Hallo, ${p.name}" else "Hallo")
                 val main = p.ttr ?: p.qttr
-                AppCard {
+                val on = Color.White
+                HeroCard {
                     Text(
-                        if (p.ttr != null) "Dein TTR" else "Dein Q-TTR",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (p.ttr != null) "DEIN TTR" else "DEIN Q-TTR",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = on.copy(alpha = 0.85f),
                     )
-                    Text(main?.toString() ?: "–", fontSize = 84.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(main?.toString() ?: "–", fontSize = 88.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2).sp, color = on)
                     val last = p.events.lastOrNull { it.type == "meeting" }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (p.ttr != null && p.qttr != null) Pill("Q-TTR ${p.qttr}")
-                        if (p.ttr == null && p.qttr != null) {
-                            Pill(p.qttrDate?.let { "TTR nicht geliefert · Stand $it" } ?: "TTR nicht geliefert")
-                        }
-                        if (last != null) {
-                            val (txt, color) = deltaText(last.delta)
-                            Pill("Zuletzt $txt", color = color.copy(alpha = 0.12f), textColor = color)
-                        }
+                    // Statusstreifen: drei Werte nebeneinander in einer hellen Leiste im Hero.
+                    // Ohne TTR zeigt das Q-TTR-Feld den Stand des Werts an.
+                    val qttrLabel = if (p.ttr == null && p.qttrDate != null) "Q-TTR · Stand ${p.qttrDate}" else "Q-TTR"
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 14.dp).clip(MaterialTheme.shapes.medium).background(Color.White.copy(alpha = 0.16f)).padding(vertical = 12.dp, horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        StatCell(qttrLabel, p.qttr?.toString() ?: "–", on)
+                        StatCell("Zuletzt", last?.let { deltaText(it.delta).first } ?: "–", on)
+                        StatCell("Einträge", p.events.size.toString(), on)
                     }
                 }
-                OutlinedButton(onOpenFavorites, Modifier.fillMaxWidth()) { Text("Favoriten") }
-                OutlinedButton(onOpenClub, Modifier.fillMaxWidth()) { Text("Mein Verein") }
-                OutlinedButton(onOpenSpieltag, Modifier.fillMaxWidth()) { Text("Spieltag") }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    NavTile("Favoriten", onOpenFavorites, Modifier.weight(1f))
+                    NavTile("Verein", onOpenClub, Modifier.weight(1f))
+                    NavTile("Spieltag", onOpenSpieltag, Modifier.weight(1f))
+                }
             }
         }
         SectionLabel("Benachrichtigungen")

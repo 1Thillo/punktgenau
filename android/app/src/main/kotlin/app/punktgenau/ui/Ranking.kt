@@ -1,22 +1,14 @@
 package app.punktgenau.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.punktgenau.data.GroupRef
 import app.punktgenau.data.PlayerLink
 import app.punktgenau.data.PlayerRepository
@@ -46,14 +38,11 @@ object RatingModeState {
     var mode by mutableStateOf(RatingMode.TTR)
 }
 
-/** Umschalter zwischen TTR und QTTR. */
+/** Umschalter zwischen TTR und QTTR, als Segmente in voller Breite. */
 @Composable
 fun RatingModeChips() {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        RatingMode.entries.forEach { m ->
-            FilterChip(RatingModeState.mode == m, { RatingModeState.mode = m }, { Text(m.label) })
-        }
-    }
+    val modes = RatingMode.entries
+    Segmented(modes.map { it.label }, modes.indexOf(RatingModeState.mode)) { RatingModeState.mode = modes[it] }
 }
 
 /**
@@ -87,18 +76,12 @@ fun LazyListScope.rankingItems(entries: List<RankEntry>, mode: RatingMode, onOpe
         val e = sorted[i]
         val value = Ranking.value(e, mode)
         val other = if (mode == RatingMode.TTR) e.qttr?.let { "QTTR $it" } else e.ttr?.let { "TTR $it" }
-        AppCard(onClick = { onOpenPlayer(PlayerLink(e.nuId, e.name, clubNr = e.clubNr, team = e.teamRef)) }) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (value != null) RankBadge(i + 1) else Text("–", modifier = Modifier.padding(horizontal = 14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(e.name, style = MaterialTheme.typography.titleMedium)
-                    Text(e.team, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(value?.toString() ?: "–", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    if (other != null) Text(other, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+        ListCard(
+            title = e.name,
+            subtitle = e.team,
+            onClick = { onOpenPlayer(PlayerLink(e.nuId, e.name, clubNr = e.clubNr, team = e.teamRef)) },
+            leading = { if (value != null) RankBadge(i + 1) else Text("–", modifier = Modifier.padding(horizontal = 14.dp)) },
+            trailing = { TrailingNumber(value?.toString() ?: "–", other) },
+        )
     }
 }

@@ -1,5 +1,13 @@
 package app.punktgenau.ui
 
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,11 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,20 +73,22 @@ fun TeamScreen(
     val clubNr = team.clubNr ?: details?.clubNr
     val ref = team.copy(clubNr = clubNr)
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
-        TextButton(onClose) { Text("Zurück") }
-        ScreenTitle(team.name)
-        InfoText(listOfNotNull(team.group.name, details?.clubName?.takeIf { it != team.name }).joinToString(" · "))
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ links.league(team.group) }, Modifier.weight(1f)) { Text("Liga") }
-            OutlinedButton({ clubNr?.let(links.club) }, Modifier.weight(1f), enabled = clubNr != null) { Text("Verein") }
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BackBar(onClose)
+        HeroCard {
+            Text("MANNSCHAFT", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+            Text(team.name, style = MaterialTheme.typography.headlineMedium, color = Color.White)
+            Text(
+                listOfNotNull(team.group.name, details?.clubName?.takeIf { it != team.name }).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HeroChoice("Liga", { links.league(team.group) }, Modifier.weight(1f))
+                HeroChoice("Verein", clubNr?.let { nr -> { links.club(nr) } }, Modifier.weight(1f))
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(state.tab == 0, { state.tab = 0 }, { Text("Rangliste") })
-            FilterChip(state.tab == 1, { state.tab = 1 }, { Text("Spielplan") })
-            FilterChip(state.tab == 2, { state.tab = 2 }, { Text("Bilanzen") })
-        }
+        Segmented(listOf("Rangliste", "Spielplan", "Bilanzen"), state.tab) { state.tab = it }
         when (state.tab) {
             0 -> TeamRanking(teams, players, ref, links)
             1 -> TeamSchedule(teams, ref, links)
@@ -136,20 +143,23 @@ private fun TeamSchedule(teams: TeamRepository, team: TeamRef, links: Links) {
                 items(s.value) { a ->
                     val report = Spieltag.reportLink(team, a, now)
                     val running = Spieltag.isRunning(a, now)
+                    val day = MatchTime.day(a.date)
                     AppCard(onClick = report?.let { r -> { links.report(r) } }) {
-                        Text(
-                            listOfNotNull(
-                                MatchTime.day(a.date)?.let { "%02d.%02d.%d".format(it.dayOfMonth, it.monthValue, it.year) },
-                                MatchTime.time(a.date)?.let { "$it Uhr" },
-                                when (a.home) { true -> "Heim"; false -> "Auswärts"; null -> null },
-                            ).joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(a.opponentName, style = MaterialTheme.typography.titleMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            a.result?.let { Pill(it) }
-                            if (running) Pill(if (a.live) "LIVE" else "läuft", color = MaterialTheme.colorScheme.primaryContainer, textColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            if (day != null) DateBadge("%02d.%02d.".format(day.dayOfMonth, day.monthValue), day.year.toString())
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    listOfNotNull(
+                                        MatchTime.time(a.date)?.let { "$it Uhr" },
+                                        when (a.home) { true -> "Heim"; false -> "Auswärts"; null -> null },
+                                    ).joinToString(" · "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(a.opponentName, style = MaterialTheme.typography.titleMedium)
+                                if (running) LivePill(if (a.live) "LIVE" else "läuft")
+                            }
+                            a.result?.let { ScoreBox(it) }
                         }
                     }
                 }
@@ -171,20 +181,40 @@ private fun TeamBalances(clickTt: ClickTtRepository, team: TeamRef, links: Links
             is Result.Failed -> item { InfoText(s.message) }
             is Result.Ok -> items(s.value) { p ->
                 val expanded = p.playerId in open
-                AppCard(onClick = { if (expanded) open.remove(p.playerId) else open.add(p.playerId) }) {
-                    Text("${p.position}  ${p.name}", style = MaterialTheme.typography.titleMedium)
-                    Text("Einsätze ${p.appearances} · Gesamt ${p.won}:${p.lost}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (expanded) {
-                        p.perOpponent.forEach { o -> Text("Gegen Position ${o.opponentRank}: ${o.won}:${o.lost}", style = MaterialTheme.typography.bodyMedium) }
-                        if (p.playerId.startsWith("NU")) {
-                            TextButton({ links.player(PlayerLink(p.playerId, p.name, clubNr = team.clubNr, team = team)) }) {
-                                Text("Spieler ansehen", fontWeight = FontWeight.SemiBold)
+                ListCard(
+                    title = p.name,
+                    subtitle = "Einsätze ${p.appearances}" + if (expanded) "" else " · antippen für Details",
+                    onClick = { if (expanded) open.remove(p.playerId) else open.add(p.playerId) },
+                    leading = { PositionBox(p.position) },
+                    trailing = { TrailingNumber("${p.won}:${p.lost}", "Gesamt", MaterialTheme.colorScheme.primary) },
+                    extra = if (expanded) ({
+                        HorizontalDivider(Modifier.padding(vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        p.perOpponent.forEach { o ->
+                            Row(Modifier.fillMaxWidth()) {
+                                Text("Gegen Position ${o.opponentRank}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                Text("${o.won}:${o.lost}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             }
                         }
-                    }
-                }
+                        if (p.playerId.startsWith("NU")) {
+                            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End) {
+                                AccentAction("Spieler ansehen", { links.player(PlayerLink(p.playerId, p.name, clubNr = team.clubNr, team = team)) })
+                            }
+                        }
+                    }) else null,
+                )
             }
         }
         item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+/** Aufstellungsposition (z. B. "1.2") als kleines Feld links. */
+@Composable
+private fun PositionBox(text: String) {
+    Box(
+        Modifier.widthIn(min = 44.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 8.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1)
     }
 }

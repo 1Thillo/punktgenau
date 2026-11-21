@@ -1,6 +1,5 @@
 package app.punktgenau.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,10 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +29,6 @@ import app.punktgenau.data.Result
 import app.punktgenau.data.TeamInfo
 import app.punktgenau.data.TeamMember
 import app.punktgenau.data.TeamRepository
-import androidx.compose.material3.FilterChip
 import java.time.LocalDate
 import kotlinx.coroutines.launch
 
@@ -122,58 +118,83 @@ fun AppointmentScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton({
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BackBar(
+            {
                 when (step) {
                     Step.Teams -> onClose()
                     is Step.Dates -> if (teamList.size > 1) { step = Step.Teams; message = null } else onClose()
                     is Step.Lineup -> { step = Step.Dates(team ?: teamList.first()); message = null }
                 }
-            }) { Text(if (step == Step.Teams) "Schließen" else "Zurück") }
-            if (step is Step.Lineup || added.isNotEmpty()) TextButton(onClose) { Text(if (added.isEmpty()) "Zum Rechner" else "Fertig, zum Rechner (${added.size})") }
+            },
+            label = if (step == Step.Teams) "Schließen" else "Zurück",
+        ) {
+            if (step is Step.Lineup || added.isNotEmpty()) AccentAction(if (added.isEmpty()) "Zum Rechner" else "Fertig, zum Rechner (${added.size})", onClose)
         }
-        Text(
+        ScreenTitle(
             when (step) {
                 Step.Teams -> "Mannschaft wählen"
                 is Step.Dates -> "Termin wählen"
-                is Step.Lineup -> "Gegner antippen, um sie zum Rechner hinzuzufügen"
+                is Step.Lineup -> "Gegner wählen"
             },
-            style = MaterialTheme.typography.headlineMedium,
         )
-        if (step is Step.Dates) {
-            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(filter == ScheduleFilter.ALL, { team?.let { loadDates(it, ScheduleFilter.ALL) } }, { Text("Gesamt") })
-                FilterChip(filter == ScheduleFilter.FIRST_HALF, { team?.let { loadDates(it, ScheduleFilter.FIRST_HALF) } }, { Text("Vorrunde") })
-                FilterChip(filter == ScheduleFilter.SECOND_HALF, { team?.let { loadDates(it, ScheduleFilter.SECOND_HALF) } }, { Text("Rückrunde") })
+        // Schrittanzeige: wo im Ablauf Mannschaft, Termin, Gegner man gerade steht.
+        val current = when (step) { Step.Teams -> 0; is Step.Dates -> 1; is Step.Lineup -> 2 }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("1 Mannschaft", "2 Termin", "3 Gegner").forEachIndexed { i, s ->
+                if (i == current) Pill(s, color = MaterialTheme.colorScheme.primary, textColor = MaterialTheme.colorScheme.onPrimary)
+                else Pill(s)
             }
         }
+        if (step is Step.Dates) {
+            val filters = listOf(ScheduleFilter.ALL, ScheduleFilter.FIRST_HALF, ScheduleFilter.SECOND_HALF)
+            Segmented(listOf("Gesamt", "Vorrunde", "Rückrunde"), filters.indexOf(filter)) { i -> team?.let { loadDates(it, filters[i]) } }
+        }
         if (step is Step.Lineup) {
-            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(useDate, { useDate = true }, { Text("Wert zum Termin") })
-                FilterChip(!useDate, { useDate = false }, { Text("Aktueller Wert") })
-            }
+            InfoText("Gegner antippen, um sie zum Rechner hinzuzufügen.")
+            Segmented(listOf("Wert zum Termin", "Aktueller Wert"), if (useDate) 0 else 1) { useDate = it == 0 }
             Text(
                 if (useDate) "Die Werte gelten für den Stand vor dem Spieltag. So rechnet der Rechner so, wie das Spiel gewertet wurde."
                 else "Die Werte sind die heutigen. Sie weichen vom Stand zum Spieltag ab.",
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (busy) CircularProgressIndicator()
-        message?.let { Text(it) }
+        if (busy) LoadingBox()
+        message?.let { InfoText(it) }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (step) {
-                Step.Teams -> items(teamList) { t -> ListEntry(t.name, t.league) { openDates(t) } }
+                Step.Teams -> items(teamList) { t -> ListCard(t.name, t.league, onClick = { openDates(t) }, leading = { LetterBadge(t.name) }) }
                 is Step.Dates -> items(dates) { a ->
                     val where = when (a.home) { true -> "Heim"; false -> "Auswärts"; null -> null }
-                    val sub = listOfNotNull(formatDate(a.date), where, a.result?.let { "Ergebnis $it" }).joinToString(" · ")
-                    ListEntry(a.opponentName, sub.ifBlank { null }) { openLineup(a) }
+                    val day = app.punktgenau.data.MatchTime.day(a.date)
+                    val sub = listOfNotNull(
+                        if (day == null) formatDate(a.date) else app.punktgenau.data.MatchTime.time(a.date)?.let { "$it Uhr" },
+                        where,
+                    ).joinToString(" · ")
+                    ListCard(
+                        a.opponentName,
+                        sub.ifBlank { null },
+                        onClick = { openLineup(a) },
+                        leading = day?.let { d -> { DateBadge("%02d.%02d.".format(d.dayOfMonth, d.monthValue), d.year.toString()) } },
+                        trailing = { a.result?.let { ScoreBox(it, strong = false) } ?: Chevron() },
+                    )
                 }
                 is Step.Lineup -> items(lineup) { m ->
                     val done = m.nuId != null && m.nuId in added
-                    ListEntry((m.rank?.let { "$it. " } ?: "") + m.displayName, if (done) "hinzugefügt" else null) { addPlayer(m) }
+                    ListCard(
+                        m.displayName,
+                        if (done) "hinzugefügt" else null,
+                        onClick = { addPlayer(m) },
+                        leading = { m.rank?.let { RankBadge(it, highlight = done) } ?: LetterBadge(m.displayName) },
+                        trailing = {
+                            if (done) Pill("✓ im Rechner", color = MaterialTheme.colorScheme.primaryContainer, textColor = MaterialTheme.colorScheme.onPrimaryContainer)
+                            else Text("+", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                        },
+                    )
                 }
             }
+            item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 16.dp)) }
         }
     }
 }
@@ -185,12 +206,4 @@ private fun formatDate(iso: String?): String? {
     val d = app.punktgenau.data.MatchTime.day(iso) ?: return iso
     return "%02d.%02d.%d".format(d.dayOfMonth, d.monthValue, d.year) +
         (app.punktgenau.data.MatchTime.time(iso)?.let { ", $it Uhr" }.orEmpty())
-}
-
-@Composable
-private fun ListEntry(title: String, subtitle: String?, onClick: () -> Unit) {
-    AppCard(onClick = onClick) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    }
 }
