@@ -60,6 +60,7 @@ import app.punktgenau.ui.PlayerViewScreen
 import app.punktgenau.ui.TransferScreen
 import app.punktgenau.ui.SpieltagScreen
 import app.punktgenau.ui.FollowScreen
+import app.punktgenau.ui.FavoritesScreen
 import app.punktgenau.ui.SpielberichtScreen
 import kotlinx.coroutines.launch
 
@@ -96,6 +97,7 @@ private sealed interface Dest {
     data object Appointments : Dest
     data object Transfers : Dest
     data object Follow : Dest
+    data object Favorites : Dest
     class Spieltag : Dest { val state = SpieltagState() }
     class Report(val link: ReportLink) : Dest
     class Player(val link: PlayerLink) : Dest
@@ -204,6 +206,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                 )
                 Dest.Transfers -> TransferScreen(app.transfers, association = "RTTVR", onClose = { pop() })
                 Dest.Follow -> FollowScreen(app.clubs, app.follow, onClose = { pop() })
+                Dest.Favorites -> FavoritesScreen(app.favorites, onOpen = { links.player(it) }, onClose = { pop() })
                 is Dest.Spieltag -> SpieltagScreen(
                     app.spieltag,
                     state = top.state,
@@ -220,6 +223,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     finder = app.matchFinder,
                     player = top.link,
                     links = links,
+                    favorites = app.favorites,
                     onClose = { pop() },
                     onUseInCalculator = { value ->
                         calc.ownText = value.toString()
@@ -274,6 +278,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onOpenClub = { scope.launch { app.teams.ownClubNr()?.let { stack.add(Dest.Club(it)) } } },
                     onOpenTransfers = { stack.add(Dest.Transfers) },
                     onOpenSpieltag = { stack.add(Dest.Spieltag()) },
+                    onOpenFavorites = { stack.add(Dest.Favorites) },
                 )
                 Tab.HISTORY -> HistoryScreen(
                     events = (ui as? StartUi.Shown)?.profile?.events.orEmpty(),
