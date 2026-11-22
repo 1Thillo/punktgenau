@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/1Thillo/punktgenau/compare/v0.8.0...v0.8.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **spielbericht:** Namen im Doppel werden nicht mehr gekürzt ([232f3b3](https://github.com/1Thillo/punktgenau/commit/232f3b3915d2cd5cd05509b41ab3f2312bd2915f))
+
 ## [0.8.0](https://github.com/1Thillo/punktgenau/compare/v0.7.0...v0.8.0) (2026-11-21)
 
 
