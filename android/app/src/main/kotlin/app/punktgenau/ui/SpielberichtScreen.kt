@@ -58,21 +58,19 @@ private fun homeWon(sets: String): Boolean? {
 /** Namen einer Seite (Einzel: einer, Doppel: zwei); ein Tipp auf einen Namen mit Kennung öffnet die Person. */
 @Composable
 private fun PlayerNames(names: List<String>, ids: List<String?>, team: TeamRef?, links: Links, winner: Boolean) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    // Jeder Name in einer eigenen Zeile: Namen werden nicht mehr gekürzt, sondern dürfen umbrechen.
+    Column {
         names.forEachIndexed { i, name ->
             val id = ids.getOrNull(i)
-            if (i > 0) Text("/", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (winner) FontWeight.Bold else FontWeight.Normal,
                 color = if (id != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 modifier = if (id != null) {
-                    Modifier.weight(1f, fill = false).clickable { links.player(PlayerLink(id, name, clubNr = team?.clubNr, team = team)) }
+                    Modifier.clickable { links.player(PlayerLink(id, name, clubNr = team?.clubNr, team = team)) }
                 } else {
-                    Modifier.weight(1f, fill = false)
+                    Modifier
                 },
             )
         }
