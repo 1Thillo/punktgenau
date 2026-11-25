@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/1Thillo/punktgenau/compare/v0.10.0...v0.11.0) (2026-11-25)
+
+
+### Features
+
+* **spieler:** Direktvergleich zweier Spieler ([2ecd765](https://github.com/1Thillo/punktgenau/commit/2ecd765c684d1ad6a2d6aa9f1dac84150f523641))
+
 ## [0.10.0](https://github.com/1Thillo/punktgenau/compare/v0.9.1...v0.10.0) (2026-11-25)
 
 
