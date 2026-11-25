@@ -58,6 +58,7 @@ import app.punktgenau.ui.StartScreen
 import app.punktgenau.ui.StartUi
 import app.punktgenau.ui.ThemeMode
 import app.punktgenau.ui.PlayerViewScreen
+import app.punktgenau.ui.CompareScreen
 import app.punktgenau.ui.TransferScreen
 import app.punktgenau.ui.SpieltagScreen
 import app.punktgenau.ui.FollowScreen
@@ -102,6 +103,7 @@ private sealed interface Dest {
     class Spieltag : Dest { val state = SpieltagState() }
     class Report(val link: ReportLink) : Dest
     class Player(val link: PlayerLink) : Dest
+    class Compare(val first: PlayerLink) : Dest
     class Club(val clubNr: String) : Dest { val state = ClubViewState() }
     class League(val group: GroupRef) : Dest { val state = LeagueNavState(group) }
     class Team(val ref: TeamRef) : Dest { val state = TeamViewState() }
@@ -239,6 +241,15 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                         stack.clear()
                         tab = Tab.CALCULATOR
                     },
+                    onCompare = { stack.add(Dest.Compare(top.link)) },
+                )
+                is Dest.Compare -> CompareScreen(
+                    first = top.first,
+                    repo = app.playerRepo,
+                    finder = app.matchFinder,
+                    clubs = app.clubs,
+                    spielbericht = app.spielbericht,
+                    onClose = { pop() },
                 )
                 is Dest.Club -> ClubScreen(
                     clubs = app.clubs,
