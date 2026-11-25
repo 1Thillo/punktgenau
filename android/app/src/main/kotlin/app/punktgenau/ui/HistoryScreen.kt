@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.punktgenau.data.HistoryEvent
 import app.punktgenau.data.ReportLink
+import app.punktgenau.domain.Statistics
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.abs
@@ -71,19 +72,21 @@ fun HistoryScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(view == 0, { view = 0 }, { Text("Spiele") })
             FilterChip(view == 1, { view = 1 }, { Text("Diagramm") })
+            FilterChip(view == 2, { view = 2 }, { Text("Statistik") })
         }
         if (events.isEmpty()) {
             InfoText(if (loggedIn) "Noch keine Ereignisse geladen. Auf dem Start-Reiter aktualisieren." else "Bitte zuerst anmelden.")
             return@Column
         }
-        if (view == 1) {
+        if (view >= 1) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(range == 0, { range = 0 }, { Text("Saison") })
                 FilterChip(range == 1, { range = 1 }, { Text("1 Jahr") })
                 FilterChip(range == 2, { range = 2 }, { Text("Alles") })
             }
             val from = when (range) { 0 -> seasonStart; 1 -> today.minusYears(1); else -> LocalDate.MIN }
-            ChartCard(events.filter { it.date >= from })
+            val shown = events.filter { it.date >= from }
+            if (view == 1) ChartCard(shown) else StatsCard(shown)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(events.asReversed()) { e ->
@@ -276,6 +279,52 @@ private fun ChartCard(events: List<HistoryEvent>) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
         )
+    }
+}
+
+/** Auswertung des gewählten Zeitraums: Siegquote, Mannschaftsspiele und die größten TTR-Änderungen. */
+@Composable
+private fun StatsCard(events: List<HistoryEvent>) {
+    if (events.isEmpty()) {
+        InfoText("In diesem Zeitraum gibt es keine Ereignisse.")
+        return
+    }
+    val s = Statistics.summarize(events)
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    AppCard {
+        Text("Siegquote Einzel", style = MaterialTheme.typography.bodySmall, color = muted)
+        Text(s.matchWinRate?.let { "$it %" } ?: "–", fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        Text("${s.matchesWon} gewonnen · ${s.matchesLost} verloren", style = MaterialTheme.typography.bodyMedium, color = muted)
+    }
+    AppCard {
+        Text("Mannschaftsspiele", style = MaterialTheme.typography.bodySmall, color = muted)
+        Text("${s.meetings} gespielt", style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Pill("${s.meetingWins} Siege")
+            Pill("${s.meetingDraws} unentschieden")
+            Pill("${s.meetingLosses} Niederlagen")
+        }
+    }
+    AppCard {
+        Text("Größte TTR-Änderung", style = MaterialTheme.typography.bodySmall, color = muted)
+        ExtremeLine(s.biggestGain)
+        ExtremeLine(s.biggestLoss)
+    }
+}
+
+@Composable
+private fun ExtremeLine(e: HistoryEvent?) {
+    if (e == null) {
+        Text("–", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+    val (delta, color) = deltaText(e.delta)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(delta, color = color, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Column(Modifier.weight(1f)) {
+            Text(fmt(e.date), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(splitName(e).second, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+        }
     }
 }
 
