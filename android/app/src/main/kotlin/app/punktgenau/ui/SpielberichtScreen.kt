@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,6 +48,13 @@ import app.punktgenau.data.SpielberichtReport
 import app.punktgenau.data.SpielberichtRepository
 import app.punktgenau.data.TeamRef
 import kotlinx.coroutines.delay
+
+/** Kopfzeile im Live-Modus: Sekunden bis zur nächsten Aktualisierung; solange noch nichts geplant ist oder sie läuft, "WIRD AKTUALISIERT". */
+private fun liveLabel(nextAt: Long, now: Long): String {
+    if (nextAt == 0L) return "LIVE · WIRD AKTUALISIERT"
+    val seconds = ((nextAt - now + 999) / 1000).coerceAtLeast(0)
+    return if (seconds == 0L) "LIVE · WIRD AKTUALISIERT" else "LIVE · NÄCHSTES UPDATE IN $seconds S"
+}
 
 /** Gewinner einer Zeile aus dem Satzstand "3:1": true = Heim, false = Gast, null = offen oder unlesbar. */
 private fun homeWon(sets: String): Boolean? {
@@ -124,15 +132,26 @@ private fun GameCard(g: GameLine, link: ReportLink, links: Links) {
 fun SpielberichtScreen(repo: SpielberichtRepository, link: ReportLink, links: Links, onClose: () -> Unit) {
     var state by remember { mutableStateOf<Result<SpielberichtReport>?>(null) }
     var liveTick by remember { mutableIntStateOf(0) }
+    // Zeitpunkt der nächsten Aktualisierung und die aktuelle Zeit, daraus die Anzeige des Countdowns.
+    var nextAt by remember { mutableLongStateOf(0L) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val context = LocalContext.current
     val url = link.url
     val live = link.running
     BackHandler(onBack = onClose)
     LaunchedEffect(url) { state = repo.load(url, fresh = live) }
+    // Sekündlich die Zeit aktualisieren, solange das Spiel läuft.
+    LaunchedEffect(live) {
+        while (live) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
 
     // Laufendes Spiel: Bericht alle paar Sekunden neu holen, bis der Bildschirm verlassen wird.
     LaunchedEffect(liveTick, live) {
         if (!live) return@LaunchedEffect
+        nextAt = System.currentTimeMillis() + LIVE_INTERVAL_MS
         delay(LIVE_INTERVAL_MS)
         val r = repo.load(url, fresh = true)
         if (r is Result.Ok) state = r
@@ -155,7 +174,7 @@ fun SpielberichtScreen(repo: SpielberichtRepository, link: ReportLink, links: Li
         item {
             HeroCard {
                 Text(
-                    if (live) "LIVE · WIRD AKTUALISIERT" else "ERGEBNIS",
+                    if (live) liveLabel(nextAt, now) else "ERGEBNIS",
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.85f),
                 )
