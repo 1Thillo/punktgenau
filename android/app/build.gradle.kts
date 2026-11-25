@@ -5,7 +5,7 @@ plugins {
 }
 
 // Version: wird von release-please gesetzt (Marker nicht entfernen).
-val appVersionName = "0.8.1" // x-release-please-version
+val appVersionName = "0.9.1" // x-release-please-version
 val appVersionCode = appVersionName.split(".").let { (major, minor, patch) ->
     major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt()
 }

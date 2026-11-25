@@ -6,6 +6,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,7 +88,17 @@ fun HistoryScreen(
             }
             val from = when (range) { 0 -> seasonStart; 1 -> today.minusYears(1); else -> LocalDate.MIN }
             val shown = events.filter { it.date >= from }
-            if (view == 1) ChartCard(shown) else StatsCard(shown)
+            if (view == 1) {
+                ChartCard(shown)
+            } else {
+                // Die Auswertung ist länger als der Bildschirm; ohne Scrollen wird ihr unteres Ende abgeschnitten.
+                Column(
+                    Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StatsCard(shown)
+                }
+            }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(events.asReversed()) { e ->
