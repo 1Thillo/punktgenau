@@ -72,6 +72,28 @@ private suspend fun findTeams(clubs: ClubRepository, teams: TeamRepository, club
 }
 
 /**
+ * Spielbericht zu einem Mannschaftsspiel einer Person: Mannschaft aus dem Zusammenhang, sonst alle Mannschaften
+ * des Vereins (deren Spielpläne). Wird von der Spielerseite und vom Direktvergleich genutzt.
+ */
+internal suspend fun findPlayerReport(
+    finder: MatchFinder,
+    clubs: ClubRepository,
+    player: PlayerLink,
+    clubNr: String?,
+    association: String,
+    e: app.punktgenau.data.HistoryEvent,
+): app.punktgenau.data.ReportLink? {
+    val candidates = listOfNotNull(player.team).ifEmpty {
+        clubNr?.let { nr ->
+            (clubs.load(nr, association, Season.label(LocalDate.now())) as? Result.Ok)?.value?.teams?.map { t ->
+                TeamRef(GroupRef(t.organization.ifBlank { association }, Season.label(LocalDate.now()), t.groupId, t.league.ifBlank { t.name }), t.teamId, t.name, nr)
+            }
+        }.orEmpty()
+    }
+    return finder.find(e, candidates)
+}
+
+/**
  * Ansicht aus Sicht eines anderen Spielers: dessen öffentliche TTR-Werte und Verlauf (Liste und Diagramm),
  * dazu die Wege zu seinem Verein und seiner Mannschaft. Es wird nicht als dieser Spieler angemeldet.
  */
@@ -86,6 +108,7 @@ fun PlayerViewScreen(
     favorites: FavoriteStore,
     onClose: () -> Unit,
     onUseInCalculator: (Int) -> Unit,
+    onCompare: () -> Unit = {},
 ) {
     var outcome by remember { mutableStateOf<PlayerHistoryOutcome?>(null) }
     var isFavorite by remember(player.nuId) { mutableStateOf(favorites.contains(player.nuId)) }
@@ -131,6 +154,7 @@ fun PlayerViewScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            AccentAction("Vergleichen ›", onCompare)
             clubNr?.let { nr -> AccentAction("Verein ›", { links.club(nr) }) }
             val known = player.team
             if (known != null) {
@@ -175,17 +199,7 @@ fun PlayerViewScreen(
                 // Derselbe Verlaufs-Screen wie beim eigenen Konto: Spiele und Diagramm.
                 HistoryScreen(
                     events = h.events, loggedIn = true, modifier = Modifier.weight(1f).fillMaxWidth(), showTitle = false,
-                    findReport = { e ->
-                        // Mannschaft aus dem Zusammenhang, sonst alle Mannschaften des Vereins (deren Spielpläne).
-                        val candidates = listOfNotNull(player.team).ifEmpty {
-                            clubNr?.let { nr ->
-                                (clubs.load(nr, association, Season.label(LocalDate.now())) as? Result.Ok)?.value?.teams?.map { t ->
-                                    TeamRef(GroupRef(t.organization.ifBlank { association }, Season.label(LocalDate.now()), t.groupId, t.league.ifBlank { t.name }), t.teamId, t.name, nr)
-                                }
-                            }.orEmpty()
-                        }
-                        finder.find(e, candidates)
-                    },
+                    findReport = { e -> findPlayerReport(finder, clubs, player, clubNr, association, e) },
                     onOpenReport = links.report,
                 )
             }
