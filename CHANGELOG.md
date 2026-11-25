@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/1Thillo/punktgenau/compare/v0.9.1...v0.10.0) (2026-11-25)
+
+
+### Features
+
+* **spielbericht:** Countdown bis zur nächsten Live-Aktualisierung ([fcde25b](https://github.com/1Thillo/punktgenau/commit/fcde25bfd0f8d05bcb4b7eeaf7ee16c5c6548943))
+
 ## [0.9.1](https://github.com/1Thillo/punktgenau/compare/v0.9.0...v0.9.1) (2026-11-25)
 
 
