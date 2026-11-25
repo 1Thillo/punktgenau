@@ -12,7 +12,12 @@ val appVersionCode = appVersionName.split(".").let { (major, minor, patch) ->
 
 android {
     namespace = "app.punktgenau"
-    compileSdk = 37
+    // Compose 1.13 (AAR-Metadaten) verlangt API 37.1; targetSdk bleibt bei 37.
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
