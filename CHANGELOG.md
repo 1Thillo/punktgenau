@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.10.0](https://github.com/1Thillo/punktgenau/compare/v0.9.1...v0.10.0) (2026-11-25)
+
+
+### Features
+
+* **spielbericht:** Countdown bis zur nächsten Live-Aktualisierung ([fcde25b](https://github.com/1Thillo/punktgenau/commit/fcde25bfd0f8d05bcb4b7eeaf7ee16c5c6548943))
+
+## [0.9.1](https://github.com/1Thillo/punktgenau/compare/v0.9.0...v0.9.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **verlauf:** Statistik ist scrollbar ([94f2b75](https://github.com/1Thillo/punktgenau/commit/94f2b753b0143aef42b77f90322ed34dcb433997))
+* **verlauf:** Statistik ist scrollbar ([92a54dd](https://github.com/1Thillo/punktgenau/commit/92a54dd01f930a153ac83aaa2ddba038cc45a7e4))
+
+## [0.9.0](https://github.com/1Thillo/punktgenau/compare/v0.8.1...v0.9.0) (2026-11-25)
+
+
+### Features
+
+* **verlauf:** Statistik-Reiter mit Siegquote und größten TTR-Änderungen ([2183d0d](https://github.com/1Thillo/punktgenau/commit/2183d0de198ead7940cdf5fad56ba4c5a3a4d881))
+* **verlauf:** Statistik-Reiter mit Siegquote und größten TTR-Änderungen ([77b5c42](https://github.com/1Thillo/punktgenau/commit/77b5c4235dfe2c3aefb309df8b121e807b66e736))
+
 ## [0.8.1](https://github.com/1Thillo/punktgenau/compare/v0.8.0...v0.8.1) (2026-11-22)
 
 
