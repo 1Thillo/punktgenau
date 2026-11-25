@@ -1,6 +1,12 @@
 package app.punktgenau.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import app.punktgenau.data.HistoryEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -156,7 +162,56 @@ private fun Comparison(
         Text("Verlauf gesamt, Werte öffentlich.", style = MaterialTheme.typography.bodySmall, color = muted)
     }
 
+    OverlayChartCard(first.name, a.events, second.name, b.events)
+
     HeadToHeadCard(first, second, a.events, finder, clubs, spielbericht)
+}
+
+/** Beide TTR-Verläufe in einem Diagramm übereinander, gleiche Zeit- und Wertachse. */
+@Composable
+private fun OverlayChartCard(aName: String, aEvents: List<HistoryEvent>, bName: String, bEvents: List<HistoryEvent>) {
+    val all = aEvents + bEvents
+    if (all.size < 2) return
+    val colorA = MaterialTheme.colorScheme.primary
+    val colorB = MaterialTheme.colorScheme.tertiary
+    val grid = MaterialTheme.colorScheme.outlineVariant
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val minDay = all.minOf { it.date.toEpochDay() }
+    val maxDay = all.maxOf { it.date.toEpochDay() }
+    val span = (maxDay - minDay).coerceAtLeast(1).toFloat()
+    val minV = all.minOf { it.after }
+    val maxV = all.maxOf { it.after }
+    val pad = (maxV - minV).coerceAtLeast(10) * 0.12f
+    val lo = minV - pad
+    val hi = maxV + pad
+
+    AppCard {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("● $aName", style = MaterialTheme.typography.bodySmall, color = colorA)
+            Text("● $bName", style = MaterialTheme.typography.bodySmall, color = colorB)
+        }
+        Canvas(Modifier.fillMaxWidth().height(200.dp)) {
+            fun x(e: HistoryEvent) = (e.date.toEpochDay() - minDay) / span * size.width
+            fun y(v: Int) = size.height - (v - lo) / (hi - lo) * size.height
+            fun pathOf(events: List<HistoryEvent>) = Path().apply {
+                events.forEachIndexed { i, e ->
+                    if (i == 0) moveTo(x(e), y(e.after)) else lineTo(x(e), y(e.after))
+                }
+            }
+            // Drei waagerechte Hilfslinien für die Orientierung.
+            for (i in 0..2) {
+                val gy = size.height * i / 2f
+                drawLine(grid, Offset(0f, gy), Offset(size.width, gy), strokeWidth = 1f)
+            }
+            drawPath(pathOf(aEvents), colorA, style = Stroke(width = 5f, cap = StrokeCap.Round))
+            drawPath(pathOf(bEvents), colorB, style = Stroke(width = 5f, cap = StrokeCap.Round))
+        }
+        Text(
+            "Werte von $minV bis $maxV",
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+        )
+    }
 }
 
 @Composable
