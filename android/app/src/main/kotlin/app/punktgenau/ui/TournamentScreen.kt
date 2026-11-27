@@ -68,7 +68,8 @@ fun TournamentScreen(repo: TournamentRepository, ownAssociation: suspend () -> S
         BackBar(onClose)
         ScreenTitle("Turniere")
         own?.let { code ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Waagerecht scrollbar: der Verbandsname ist lang, der zweite Chip muss erreichbar bleiben.
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(onlyOwn, { onlyOwn = true }, { Text("Mein Verband (${Verbaende.name(code)})", maxLines = 1, softWrap = false) })
                 FilterChip(!onlyOwn, { onlyOwn = false }, { Text("Alle Verbände", maxLines = 1, softWrap = false) })
             }
