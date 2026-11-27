@@ -1,0 +1,16 @@
+punktgenau ist eine schlanke App für Tischtennis-Spielerinnen und -Spieler in Deutschland.
+
+Funktionen:
+- Anmeldung im eingebauten Browserfenster, die nach dem Neustart bleibt. Das Passwort wird nicht gespeichert.
+- TTR-Rechner für mehrere Spiele, mit Änderung und Gegner.
+- TTR-Verlauf als Liste und Diagramm, mit Statistik zu Siegquote und größten Änderungen.
+- Spielersuche, auch erweitert nach Geschlecht, TTR-Bereich und Verein.
+- Direktvergleich zweier Spieler: TTR, Verlauf und Bilanz gegeneinander.
+- Liga: Tabelle, Spielplan, Bilanz, Aufstellung und TTR-Rangliste.
+- Verein: Kontakt, Spiellokale mit Navigation, Mannschaften.
+- Spieltag: Spiele der eigenen und gemerkten Mannschaften, mit Spielbericht.
+- Spielbericht mit Einzeln, Sätzen und Summen. Laufende Spiele werden regelmäßig aktualisiert.
+- Wechselliste mit Verband- und Regionsauswahl.
+- Turnierkalender aller Verbände mit Filter und Suche.
+
+Die App ist ein unabhängiges, privates Projekt und nicht mit mytischtennis.de verbunden. Sie nutzt die öffentlichen Seiten und das Konto der angemeldeten Person. Sie prüft keinen Abo-Status und umgeht keine Sperren oder Verifizierungen.
