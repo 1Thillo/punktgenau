@@ -80,6 +80,7 @@ fun LeagueScreen(
     links: Links,
     onBack: (() -> Unit)? = null,
     onOpenTransfers: (() -> Unit)? = null,
+    onOpenTournaments: (() -> Unit)? = null,
 ) {
     val initial = state.initial
     var nav by state::nav
@@ -112,6 +113,7 @@ fun LeagueScreen(
             Nav.Home -> LeagueHome(
                 myTeams, loggedIn, onOpen = { nav = Nav.Hub(it) }, onOpenTeam = links.team, onChoose = { nav = Nav.Districts },
                 onOpenTransfers = onOpenTransfers,
+                onOpenTournaments = onOpenTournaments,
             )
             Nav.Districts -> DistrictPage(clickTt, association, season) { nav = Nav.Leagues(it) }
             is Nav.Leagues -> LeaguePickPage(clickTt, association, season, n.district) { g ->
@@ -148,6 +150,7 @@ private fun LeagueHome(
     onOpenTeam: (TeamRef) -> Unit,
     onChoose: () -> Unit,
     onOpenTransfers: (() -> Unit)?,
+    onOpenTournaments: (() -> Unit)?,
 ) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { ScreenTitle("Liga") }
@@ -187,6 +190,11 @@ private fun LeagueHome(
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ChoiceTile("Liga auswählen", "Bezirk und Spielklasse", onChoose, Modifier.weight(1f).fillMaxHeight())
                 if (onOpenTransfers != null) ChoiceTile("Wechselliste", "Wechsel im Verband", onOpenTransfers, Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+        item {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (onOpenTournaments != null) ChoiceTile("Turniere", "Kalender aller Verbände", onOpenTournaments, Modifier.weight(1f).fillMaxHeight())
             }
         }
         item { Spacer(Modifier.height(16.dp)) }

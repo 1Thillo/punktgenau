@@ -35,6 +35,7 @@ class PunktgenauApp : Application() {
 
     val clubs by lazy { app.punktgenau.data.ClubRepository(session, baseUrl) }
     val transfers by lazy { app.punktgenau.data.TransferRepository(session, baseUrl) }
+    val tournaments by lazy { app.punktgenau.data.TournamentRepository(session, baseUrl) }
     val advancedSearch by lazy { app.punktgenau.data.AdvancedSearchRepository(session, baseUrl) }
     val profiles by lazy { ProfileRepository(session, baseUrl) }
 

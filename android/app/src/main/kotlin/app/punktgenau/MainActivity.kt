@@ -59,6 +59,7 @@ import app.punktgenau.ui.StartUi
 import app.punktgenau.ui.ThemeMode
 import app.punktgenau.ui.PlayerViewScreen
 import app.punktgenau.ui.CompareScreen
+import app.punktgenau.ui.TournamentScreen
 import app.punktgenau.ui.TransferScreen
 import app.punktgenau.ui.SpieltagScreen
 import app.punktgenau.ui.FollowScreen
@@ -104,6 +105,7 @@ private sealed interface Dest {
     class Report(val link: ReportLink) : Dest
     class Player(val link: PlayerLink) : Dest
     class Compare(val first: PlayerLink) : Dest
+    data object Tournaments : Dest
     class Club(val clubNr: String) : Dest { val state = ClubViewState() }
     class League(val group: GroupRef) : Dest { val state = LeagueNavState(group) }
     class Team(val ref: TeamRef) : Dest { val state = TeamViewState() }
@@ -213,6 +215,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onClose = { pop(); tab = Tab.CALCULATOR },
                     onNeedsLogin = { loggedOut() },
                 )
+                Dest.Tournaments -> TournamentScreen(app.tournaments, ownAssociation = { app.teams.ownAssociation() }, onClose = { pop() })
                 Dest.Transfers -> TransferScreen(app.transfers, ownAssociation = { ownTeamRefs().firstOrNull()?.group?.association }, onClose = { pop() })
                 Dest.Follow -> FollowScreen(app.clubs, app.follow, onClose = { pop() })
                 Dest.Favorites -> FavoritesScreen(app.favorites, app.playerRepo, onOpen = { links.player(it) }, onClose = { pop() })
@@ -326,6 +329,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     state = leagueTab,
                     links = links,
                     onOpenTransfers = { stack.add(Dest.Transfers) },
+                    onOpenTournaments = { stack.add(Dest.Tournaments) },
                 )
                 Tab.SEARCH -> SearchScreen(
                     app.playerRepo,
