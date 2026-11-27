@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/1Thillo/punktgenau/compare/v0.11.0...v0.12.0) (2026-11-27)
+
+
+### Features
+
+* **wechselliste:** Regionen aus der Wechselliste lesen statt fest einzutragen ([a3856c1](https://github.com/1Thillo/punktgenau/commit/a3856c113508335881d1a095dcf73e263e883be0))
+* **wechselliste:** Regionen für alle Verbände aus den Daten der Website (Teil von [#6](https://github.com/1Thillo/punktgenau/issues/6)) ([23fe9cc](https://github.com/1Thillo/punktgenau/commit/23fe9cc377d8405b64dec22aea1fa58bb5461cea))
+* **wechselliste:** Regionsfilter für den RTTVR (Teil von [#6](https://github.com/1Thillo/punktgenau/issues/6)) ([ffbc105](https://github.com/1Thillo/punktgenau/commit/ffbc1059aa1ea8462740a945577b60547ff2c0a2))
+* **wechselliste:** Verband auswählen, Standard ist der Verband des eigenen Kontos ([77f1f10](https://github.com/1Thillo/punktgenau/commit/77f1f10936117092c735b6ff53525a8c431d6745))
+* **wechselliste:** Verband und Region wählen ([a2490f2](https://github.com/1Thillo/punktgenau/commit/a2490f2c138c41b5804be764930afd32a3f41e19))
+
 ## [0.11.0](https://github.com/1Thillo/punktgenau/compare/v0.10.0...v0.11.0) (2026-11-25)
 
 
