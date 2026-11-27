@@ -39,7 +39,16 @@ class TournamentRepository(private val session: SessionManager, private val base
     suspend fun load(): TournamentOutcome {
         cache.get(KEY)?.let { return TournamentOutcome.Ok(it) }
         return try {
-            val r = session.fetch(Request.Builder().url(baseUrl.resolve("/turnierwelt/kalender")!!).build())
+            // Zeitraum und "alle Verbände" ausdrücklich angeben: ohne das nimmt die Website für angemeldete
+            // Konten einen engen Standardzeitraum und den eigenen Verband, dann kommen nur 9 statt 300+ Turniere.
+            val today = java.time.LocalDate.now()
+            val url = baseUrl.newBuilder()
+                .encodedPath("/turnierwelt/kalender")
+                .addQueryParameter("date_start", today.toString())
+                .addQueryParameter("date_end", today.plusYears(1).toString())
+                .addQueryParameter("select_all_associations", "")
+                .build()
+            val r = session.fetch(Request.Builder().url(url).build())
             val list = TournamentParser.parse(r.body)
                 ?: return TournamentOutcome.Failed("Der Turnierkalender war nicht lesbar.")
             cache.put(KEY, list)
