@@ -94,6 +94,14 @@ class TeamRepository(
         null
     }
 
+    /** Verband des angemeldeten Kontos (z. B. "RTTVR") von der Startseite; null, wenn nicht angemeldet oder unbekannt. */
+    suspend fun ownAssociation(): String? = try {
+        val home = session.fetch(Request.Builder().url(baseUrl.resolve("/community?show=everything")!!).build())
+        if (AuthDetector.isUnauthenticated(home.body)) null else fedNickname.find(home.body)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+    } catch (e: java.io.IOException) {
+        null
+    }
+
     suspend fun myTeams(): Result<List<TeamInfo>> = guarded {
         val home = session.fetch(Request.Builder().url(baseUrl.resolve("/community?show=everything")!!).build())
         if (AuthDetector.isUnauthenticated(home.body)) return@guarded Result.NeedsLogin

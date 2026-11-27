@@ -1,6 +1,11 @@
 package app.punktgenau.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import app.punktgenau.data.Tournament
 import app.punktgenau.data.TournamentOutcome
 import app.punktgenau.data.TournamentRepository
+import app.punktgenau.data.Verbaende
 import java.time.LocalDate
 
 /** Lesbare Bezeichnung eines Turnier-Typs aus dem Kalender. */
@@ -43,18 +49,30 @@ internal fun tournamentTypeLabel(type: String): String = when (type) {
  * vergangene Turniere fallen weg.
  */
 @Composable
-fun TournamentScreen(repo: TournamentRepository, onClose: () -> Unit) {
+fun TournamentScreen(repo: TournamentRepository, ownAssociation: suspend () -> String?, onClose: () -> Unit) {
     var state by remember { mutableStateOf<TournamentOutcome?>(null) }
     var typeFilter by remember { mutableStateOf<String?>(null) }
+    var own by remember { mutableStateOf<String?>(null) }
+    var onlyOwn by remember { mutableStateOf(true) }
     var typed by remember { mutableStateOf("") }
     var applied by remember { mutableStateOf("") }
     BackHandler(onBack = onClose)
-    LaunchedEffect(Unit) { state = repo.load() }
+    LaunchedEffect(Unit) {
+        // Angemeldet: standardmäßig nur Turniere des eigenen Verbands.
+        own = ownAssociation()
+        state = repo.load()
+    }
 
     val today = LocalDate.now().toString()
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BackBar(onClose)
         ScreenTitle("Turniere")
+        own?.let { code ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(onlyOwn, { onlyOwn = true }, { Text("Mein Verband (${Verbaende.name(code)})", maxLines = 1, softWrap = false) })
+                FilterChip(!onlyOwn, { onlyOwn = false }, { Text("Alle Verbände", maxLines = 1, softWrap = false) })
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(typeFilter == null, { typeFilter = null }, { Text("Alle", maxLines = 1, softWrap = false) })
             listOf("open", "qualification", "circuit").forEach { t ->
@@ -79,6 +97,7 @@ fun TournamentScreen(repo: TournamentRepository, onClose: () -> Unit) {
                     val shown = s.tournaments
                         .filter { it.startDay >= today && it.state != "cancelled" }
                         .filter { typeFilter == null || it.type == typeFilter }
+                        .filter { !onlyOwn || own == null || it.organization == own }
                         .filter { applied.isBlank() || it.name.contains(applied.trim(), true) || it.location.contains(applied.trim(), true) }
                     item { SectionLabel("${shown.size} Turniere") }
                     items(shown) { t -> TournamentCard(t) }
@@ -91,8 +110,11 @@ fun TournamentScreen(repo: TournamentRepository, onClose: () -> Unit) {
 
 @Composable
 private fun TournamentCard(t: Tournament) {
+    // Tipp auf die Karte öffnet die Turnierseite der Website im Browser (wie beim Spieltag).
+    val context = LocalContext.current
+    val url = "https://www.mytischtennis.de/turnierwelt/turniere/${t.id}"
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    AppCard {
+    AppCard(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             DateBadge(t.startText.take(5), t.startText.takeLast(4))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -102,9 +124,10 @@ private fun TournamentCard(t: Tournament) {
                     style = MaterialTheme.typography.bodySmall,
                     color = muted,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Pill(tournamentTypeLabel(t.type))
                     if (t.organization.isNotBlank()) Pill(t.organization)
+                    if (t.startTime.isNotBlank()) Pill("${t.startTime} Uhr")
                     if (t.endText.isNotBlank() && t.endText != t.startText) Pill("bis ${t.endText.take(5)}")
                 }
             }

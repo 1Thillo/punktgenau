@@ -215,7 +215,7 @@ private fun Root(app: PunktgenauApp, mode: ThemeMode, onMode: (ThemeMode) -> Uni
                     onClose = { pop(); tab = Tab.CALCULATOR },
                     onNeedsLogin = { loggedOut() },
                 )
-                Dest.Tournaments -> TournamentScreen(app.tournaments, onClose = { pop() })
+                Dest.Tournaments -> TournamentScreen(app.tournaments, ownAssociation = { app.teams.ownAssociation() }, onClose = { pop() })
                 Dest.Transfers -> TransferScreen(app.transfers, ownAssociation = { ownTeamRefs().firstOrNull()?.group?.association }, onClose = { pop() })
                 Dest.Follow -> FollowScreen(app.clubs, app.follow, onClose = { pop() })
                 Dest.Favorites -> FavoritesScreen(app.favorites, app.playerRepo, onOpen = { links.player(it) }, onClose = { pop() })

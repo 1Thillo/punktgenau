@@ -21,6 +21,8 @@ data class Tournament(
     /** Datum des Beginns als ISO-Tag (JJJJ-MM-TT), für Sortierung und Filter. */
     val startDay: String,
     val startText: String,
+    /** Uhrzeit des Beginns, z. B. "14:00"; leer, wenn die Website keine nennt. */
+    val startTime: String,
     val endText: String,
     val registrationDeadline: String?,
 )
@@ -83,6 +85,7 @@ object TournamentParser {
                 organization = o.str("organization_short").orEmpty(),
                 startDay = o.str("start_date_time")?.take(10).orEmpty(),
                 startText = o.str("formattedStartDate").orEmpty(),
+                startTime = o.str("formattedStartTime").orEmpty(),
                 endText = o.str("formattedEndDate").orEmpty(),
                 registrationDeadline = o.str("registration_deadline"),
             )
