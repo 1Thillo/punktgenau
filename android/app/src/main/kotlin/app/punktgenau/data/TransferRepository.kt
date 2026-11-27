@@ -28,13 +28,14 @@ class TransferRepository(private val session: SessionManager, private val baseUr
 
     private val route = "routes/click-tt+/\$association.wechselliste"
 
-    suspend fun load(association: String, incoming: Boolean, periodFrom: String?, query: String): Result<TransferPage> = try {
+    suspend fun load(association: String, incoming: Boolean, periodFrom: String?, query: String, region: String? = null): Result<TransferPage> = try {
         val url = baseUrl.newBuilder()
             .addPathSegments("click-tt/$association/wechselliste")
             .addQueryParameter("_data", route)
             .addQueryParameter("transfer-direction", if (incoming) "incoming" else "outgoing")
             .apply {
                 if (!periodFrom.isNullOrBlank()) addQueryParameter("license-period", periodFrom)
+                if (!region.isNullOrBlank()) addQueryParameter("region", region)
                 if (query.isNotBlank()) addQueryParameter("player-query", query.trim())
             }
             .build()

@@ -22,6 +22,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
+import app.punktgenau.data.RttvrRegionen
 import app.punktgenau.data.Verbaende
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -45,6 +46,8 @@ import app.punktgenau.data.TransferRepository
 fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> String?, onClose: () -> Unit) {
     var association by remember { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
+    var region by remember { mutableStateOf<String?>(null) }
+    var regionMenuOpen by remember { mutableStateOf(false) }
     var incoming by remember { mutableStateOf(true) }
     var period by remember { mutableStateOf<TransferPeriod?>(null) }
     var typed by remember { mutableStateOf("") }
@@ -54,10 +57,10 @@ fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> Strin
     // Standard ist der Verband des eigenen Kontos; ohne bekannten Verband RTTVR.
     LaunchedEffect(Unit) { association = ownAssociation() ?: Verbaende.STANDARD }
     // Der Server filtert nach Name nicht; die Namenssuche passiert unten im Browser, wie auf der Website.
-    LaunchedEffect(association, incoming, period) {
+    LaunchedEffect(association, incoming, period, region) {
         val a = association ?: return@LaunchedEffect
         state = null
-        state = repo.load(a, incoming, period?.from, "")
+        state = repo.load(a, incoming, period?.from, "", region)
     }
     BackHandler(onBack = onClose)
 
@@ -72,12 +75,31 @@ fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> Strin
                     DropdownMenuItem(
                         text = { Text(name) },
                         onClick = {
-                            // Zeiträume gelten je Verband, deshalb den Zeitraum zurücksetzen.
+                            // Zeiträume und Regionen gelten je Verband, deshalb beides zurücksetzen.
                             association = code
                             period = null
+                            region = null
                             menuOpen = false
                         },
                     )
+                }
+            }
+        }
+        // Regionscodes sind nur für den RTTVR bekannt; bei anderen Verbänden gibt es keinen Regionsfilter.
+        if (association == "RTTVR") {
+            Box {
+                OutlinedButton({ regionMenuOpen = true }) { Text("Region: ${RttvrRegionen.name(region)} ▾") }
+                DropdownMenu(expanded = regionMenuOpen, onDismissRequest = { regionMenuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Alle Regionen") },
+                        onClick = { region = null; regionMenuOpen = false },
+                    )
+                    RttvrRegionen.alle.forEach { (code, name) ->
+                        DropdownMenuItem(
+                            text = { Text(name) },
+                            onClick = { region = code; regionMenuOpen = false },
+                        )
+                    }
                 }
             }
         }
