@@ -16,8 +16,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
+import app.punktgenau.data.Verbaende
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,17 +42,22 @@ import app.punktgenau.data.TransferRepository
 
 /** Wechselliste des Verbands: eingehende oder ausgehende Lizenzwechsel, nach Zeitraum und Name gefiltert. */
 @Composable
-fun TransferScreen(repo: TransferRepository, association: String, onClose: () -> Unit) {
+fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> String?, onClose: () -> Unit) {
+    var association by remember { mutableStateOf<String?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
     var incoming by remember { mutableStateOf(true) }
     var period by remember { mutableStateOf<TransferPeriod?>(null) }
     var typed by remember { mutableStateOf("") }
     var applied by remember { mutableStateOf("") }
     var state by remember { mutableStateOf<Result<TransferPage>?>(null) }
 
+    // Standard ist der Verband des eigenen Kontos; ohne bekannten Verband RTTVR.
+    LaunchedEffect(Unit) { association = ownAssociation() ?: Verbaende.STANDARD }
     // Der Server filtert nach Name nicht; die Namenssuche passiert unten im Browser, wie auf der Website.
-    LaunchedEffect(incoming, period) {
+    LaunchedEffect(association, incoming, period) {
+        val a = association ?: return@LaunchedEffect
         state = null
-        state = repo.load(association, incoming, period?.from, "")
+        state = repo.load(a, incoming, period?.from, "")
     }
     BackHandler(onBack = onClose)
 
@@ -55,6 +65,22 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BackBar(onClose)
         ScreenTitle("Wechselliste")
+        Box {
+            OutlinedButton({ menuOpen = true }) { Text("Verband: ${Verbaende.name(association)} ▾") }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                Verbaende.alle.forEach { (code, name) ->
+                    DropdownMenuItem(
+                        text = { Text(name) },
+                        onClick = {
+                            // Zeiträume gelten je Verband, deshalb den Zeitraum zurücksetzen.
+                            association = code
+                            period = null
+                            menuOpen = false
+                        },
+                    )
+                }
+            }
+        }
         Segmented(listOf("Eingehend", "Ausgehend"), if (incoming) 0 else 1) { incoming = it == 0 }
         page?.periods?.takeIf { it.isNotEmpty() }?.let { periods ->
             // Einzeilig und horizontal scrollbar: umbrechende Chips haben die Kopfzeile aufgebläht.
