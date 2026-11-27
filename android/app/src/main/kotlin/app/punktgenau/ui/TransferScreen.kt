@@ -22,7 +22,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
-import app.punktgenau.data.RttvrRegionen
+import app.punktgenau.data.Regionen
 import app.punktgenau.data.Verbaende
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -85,16 +85,17 @@ fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> Strin
                 }
             }
         }
-        // Regionscodes sind nur für den RTTVR bekannt; bei anderen Verbänden gibt es keinen Regionsfilter.
-        if (association == "RTTVR") {
+        // Ohne Regionen (oder nur dem Verband selbst) gibt es keinen Regionsfilter.
+        val regionen = Regionen.fuer(association)
+        if (regionen.size > 1) {
             Box {
-                OutlinedButton({ regionMenuOpen = true }) { Text("Region: ${RttvrRegionen.name(region)} ▾") }
+                OutlinedButton({ regionMenuOpen = true }) { Text("Region: ${Regionen.name(association, region)} ▾") }
                 DropdownMenu(expanded = regionMenuOpen, onDismissRequest = { regionMenuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("Alle Regionen") },
                         onClick = { region = null; regionMenuOpen = false },
                     )
-                    RttvrRegionen.alle.forEach { (code, name) ->
+                    regionen.forEach { (code, name) ->
                         DropdownMenuItem(
                             text = { Text(name) },
                             onClick = { region = code; regionMenuOpen = false },
