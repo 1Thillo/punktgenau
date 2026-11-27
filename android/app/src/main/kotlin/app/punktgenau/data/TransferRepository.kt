@@ -21,20 +21,29 @@ data class Transfer(
 /** Lizenzzeitraum der Wechselliste; [from] ist der Parameter für die Abfrage. */
 data class TransferPeriod(val label: String, val from: String)
 
-data class TransferPage(val periods: List<TransferPeriod>, val transfers: List<Transfer>)
+/** Region für den Filter der Wechselliste; [code] ist der Parameter `region` (z. B. "DE.SW.R7.12.01"). */
+data class TransferRegion(val name: String, val code: String)
+
+data class TransferPage(
+    val periods: List<TransferPeriod>,
+    val transfers: List<Transfer>,
+    /** Regionen des Verbands, wie die Website sie in der Wechselliste anbietet. */
+    val regions: List<TransferRegion> = emptyList(),
+)
 
 /** Wechselliste des Verbands (öffentliche click-tt-Seite, Remix-JSON). */
 class TransferRepository(private val session: SessionManager, private val baseUrl: HttpUrl) {
 
     private val route = "routes/click-tt+/\$association.wechselliste"
 
-    suspend fun load(association: String, incoming: Boolean, periodFrom: String?, query: String): Result<TransferPage> = try {
+    suspend fun load(association: String, incoming: Boolean, periodFrom: String?, query: String, region: String? = null): Result<TransferPage> = try {
         val url = baseUrl.newBuilder()
             .addPathSegments("click-tt/$association/wechselliste")
             .addQueryParameter("_data", route)
             .addQueryParameter("transfer-direction", if (incoming) "incoming" else "outgoing")
             .apply {
                 if (!periodFrom.isNullOrBlank()) addQueryParameter("license-period", periodFrom)
+                if (!region.isNullOrBlank()) addQueryParameter("region", region)
                 if (query.isNotBlank()) addQueryParameter("player-query", query.trim())
             }
             .build()
@@ -76,6 +85,11 @@ object TransferParser {
             val from = o.str("from") ?: return@mapNotNull null
             TransferPeriod(o.str("label") ?: from, from)
         }
-        return TransferPage(periods, transfers)
+        val regions = (data["nuRegions"] as? JsonArray).orEmpty().mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val code = o.str("pattern") ?: return@mapNotNull null
+            TransferRegion(o.str("name") ?: code, code)
+        }
+        return TransferPage(periods, transfers, regions)
     }
 }

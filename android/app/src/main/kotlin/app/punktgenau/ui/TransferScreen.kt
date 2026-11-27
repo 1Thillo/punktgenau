@@ -16,8 +16,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
+import app.punktgenau.data.TransferRegion
+import app.punktgenau.data.Verbaende
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,17 +43,28 @@ import app.punktgenau.data.TransferRepository
 
 /** Wechselliste des Verbands: eingehende oder ausgehende Lizenzwechsel, nach Zeitraum und Name gefiltert. */
 @Composable
-fun TransferScreen(repo: TransferRepository, association: String, onClose: () -> Unit) {
+fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> String?, onClose: () -> Unit) {
+    var association by remember { mutableStateOf<String?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var region by remember { mutableStateOf<String?>(null) }
+    var regionMenuOpen by remember { mutableStateOf(false) }
+    // Regionen kommen mit der Wechselliste; die Liste bleibt stehen, auch wenn eine Region gewählt ist.
+    var regionen by remember(association) { mutableStateOf<List<TransferRegion>>(emptyList()) }
     var incoming by remember { mutableStateOf(true) }
     var period by remember { mutableStateOf<TransferPeriod?>(null) }
     var typed by remember { mutableStateOf("") }
     var applied by remember { mutableStateOf("") }
     var state by remember { mutableStateOf<Result<TransferPage>?>(null) }
 
+    // Standard ist der Verband des eigenen Kontos; ohne bekannten Verband RTTVR.
+    LaunchedEffect(Unit) { association = ownAssociation() ?: Verbaende.STANDARD }
     // Der Server filtert nach Name nicht; die Namenssuche passiert unten im Browser, wie auf der Website.
-    LaunchedEffect(incoming, period) {
+    LaunchedEffect(association, incoming, period, region) {
+        val a = association ?: return@LaunchedEffect
         state = null
-        state = repo.load(association, incoming, period?.from, "")
+        val loaded = repo.load(a, incoming, period?.from, "", region)
+        state = loaded
+        if (region == null) (loaded as? Result.Ok)?.value?.regions?.takeIf { it.isNotEmpty() }?.let { regionen = it }
     }
     BackHandler(onBack = onClose)
 
@@ -55,6 +72,43 @@ fun TransferScreen(repo: TransferRepository, association: String, onClose: () ->
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BackBar(onClose)
         ScreenTitle("Wechselliste")
+        Box {
+            OutlinedButton({ menuOpen = true }) { Text("Verband: ${Verbaende.name(association)} ▾") }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                Verbaende.alle.forEach { (code, name) ->
+                    DropdownMenuItem(
+                        text = { Text(name) },
+                        onClick = {
+                            // Zeiträume und Regionen gelten je Verband, deshalb beides zurücksetzen.
+                            association = code
+                            period = null
+                            region = null
+                            menuOpen = false
+                        },
+                    )
+                }
+            }
+        }
+        // Ohne Regionen (oder nur dem Verband selbst) gibt es keinen Regionsfilter.
+        if (regionen.size > 1) {
+            Box {
+                OutlinedButton({ regionMenuOpen = true }) {
+                    Text("Region: ${regionen.firstOrNull { it.code == region }?.name ?: "Alle Regionen"} ▾")
+                }
+                DropdownMenu(expanded = regionMenuOpen, onDismissRequest = { regionMenuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Alle Regionen") },
+                        onClick = { region = null; regionMenuOpen = false },
+                    )
+                    regionen.forEach { r ->
+                        DropdownMenuItem(
+                            text = { Text(r.name) },
+                            onClick = { region = r.code; regionMenuOpen = false },
+                        )
+                    }
+                }
+            }
+        }
         Segmented(listOf("Eingehend", "Ausgehend"), if (incoming) 0 else 1) { incoming = it == 0 }
         page?.periods?.takeIf { it.isNotEmpty() }?.let { periods ->
             // Einzeilig und horizontal scrollbar: umbrechende Chips haben die Kopfzeile aufgebläht.
