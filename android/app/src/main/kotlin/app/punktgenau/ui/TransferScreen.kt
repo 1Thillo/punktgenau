@@ -22,7 +22,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
-import app.punktgenau.data.Regionen
+import app.punktgenau.data.TransferRegion
 import app.punktgenau.data.Verbaende
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -48,6 +48,8 @@ fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> Strin
     var menuOpen by remember { mutableStateOf(false) }
     var region by remember { mutableStateOf<String?>(null) }
     var regionMenuOpen by remember { mutableStateOf(false) }
+    // Regionen kommen mit der Wechselliste; die Liste bleibt stehen, auch wenn eine Region gewählt ist.
+    var regionen by remember(association) { mutableStateOf<List<TransferRegion>>(emptyList()) }
     var incoming by remember { mutableStateOf(true) }
     var period by remember { mutableStateOf<TransferPeriod?>(null) }
     var typed by remember { mutableStateOf("") }
@@ -60,7 +62,9 @@ fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> Strin
     LaunchedEffect(association, incoming, period, region) {
         val a = association ?: return@LaunchedEffect
         state = null
-        state = repo.load(a, incoming, period?.from, "", region)
+        val loaded = repo.load(a, incoming, period?.from, "", region)
+        state = loaded
+        if (region == null) (loaded as? Result.Ok)?.value?.regions?.takeIf { it.isNotEmpty() }?.let { regionen = it }
     }
     BackHandler(onBack = onClose)
 
@@ -86,19 +90,20 @@ fun TransferScreen(repo: TransferRepository, ownAssociation: suspend () -> Strin
             }
         }
         // Ohne Regionen (oder nur dem Verband selbst) gibt es keinen Regionsfilter.
-        val regionen = Regionen.fuer(association)
         if (regionen.size > 1) {
             Box {
-                OutlinedButton({ regionMenuOpen = true }) { Text("Region: ${Regionen.name(association, region)} ▾") }
+                OutlinedButton({ regionMenuOpen = true }) {
+                    Text("Region: ${regionen.firstOrNull { it.code == region }?.name ?: "Alle Regionen"} ▾")
+                }
                 DropdownMenu(expanded = regionMenuOpen, onDismissRequest = { regionMenuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("Alle Regionen") },
                         onClick = { region = null; regionMenuOpen = false },
                     )
-                    regionen.forEach { (code, name) ->
+                    regionen.forEach { r ->
                         DropdownMenuItem(
-                            text = { Text(name) },
-                            onClick = { region = code; regionMenuOpen = false },
+                            text = { Text(r.name) },
+                            onClick = { region = r.code; regionMenuOpen = false },
                         )
                     }
                 }
