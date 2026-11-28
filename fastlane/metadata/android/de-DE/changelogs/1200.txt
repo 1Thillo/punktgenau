@@ -1,0 +1,3 @@
+Version 0.12.0:
+- Wechselliste: Verband auswählen, Standard ist der eigene Verband.
+- Wechselliste: Regionsfilter, die Regionen kommen von der Website.
