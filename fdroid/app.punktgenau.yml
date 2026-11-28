@@ -1,0 +1,28 @@
+# Entwurf für den Eintrag im Repository fdroiddata (metadata/app.punktgenau.yml).
+# Vor dem Einreichen mit "fdroid lint" und "fdroid build" prüfen; die Werte für subdir und
+# gradle sind noch nicht auf dem F-Droid-Build-Server getestet.
+Categories:
+  - Sports & Health
+License: MIT
+AuthorName: Thillo
+WebSite: https://github.com/1Thillo/punktgenau
+SourceCode: https://github.com/1Thillo/punktgenau
+IssueTracker: https://github.com/1Thillo/punktgenau/issues
+Changelog: https://github.com/1Thillo/punktgenau/releases
+AutoName: punktgenau
+
+RepoType: git
+Repo: https://github.com/1Thillo/punktgenau.git
+
+Builds:
+  - versionName: 0.12.0
+    versionCode: 1200
+    commit: v0.12.0
+    subdir: android/app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 0.12.0
+CurrentVersionCode: 1200
