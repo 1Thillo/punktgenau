@@ -33,10 +33,10 @@ class SearchHistoryTest {
     }
 
     @Test fun leerzeichenWerdenGetrimmt_leereSuchenFallenWeg() {
-        history.add("  Gilles  ")
+        history.add("  Mustermann  ")
         history.add("   ")
         history.add("")
-        assertEquals(listOf("Gilles"), history.load())
+        assertEquals(listOf("Mustermann"), history.load())
     }
 
     @Test fun begrenztAufZehn() {

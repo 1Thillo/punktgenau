@@ -46,7 +46,7 @@ class ClickTtParserTest {
     }
 
     @Test fun mannschaftsSpieler() {
-        val r = root("""{"data":{"balancesheet":[{"single_player_statistics":[{"player_id":"NU9","points_won":"8","points_lost":"4","player_rank":"4","team_number":"2","meeting_count":"6","player_firstname":"Thilo","player_lastname":"Gilles","single_statistics":[{"points_won":"1","points_lost":"2","opponent_rank":"1"}]}]}]}}""")
+        val r = root("""{"data":{"balancesheet":[{"single_player_statistics":[{"player_id":"NU9","points_won":"8","points_lost":"4","player_rank":"4","team_number":"2","meeting_count":"6","player_firstname":"Max","player_lastname":"Mustermann","single_statistics":[{"points_won":"1","points_lost":"2","opponent_rank":"1"}]}]}]}}""")
         val p = ClickTtParser.teamPlayers(r)!![0]
         assertEquals("2.4", p.position)
         assertEquals(6, p.appearances)
