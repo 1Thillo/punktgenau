@@ -1,0 +1,3 @@
+Version 0.13.0:
+- Turniere: Turnierkalender mit Verbands-Filter, Typ-Filter und Suche.
+- Turniere: Uhrzeit, eigener Verband als Standard, Turnier im Browser öffnen.
