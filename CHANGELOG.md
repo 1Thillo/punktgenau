@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.13.0](https://github.com/1Thillo/punktgenau/compare/v0.12.0...v0.13.0) (2026-11-27)
+
+
+### Features
+
+* **turniere:** Turnierkalender mit Typ-Filter und Suche ([#5](https://github.com/1Thillo/punktgenau/issues/5)) ([4c71ade](https://github.com/1Thillo/punktgenau/commit/4c71ade5f83f71cf214a45eb2cd2db90d4cfdf23))
+* **turniere:** Turnierkalender mit Verbands-Filter und Browser-Link ([#5](https://github.com/1Thillo/punktgenau/issues/5)) ([9f307bd](https://github.com/1Thillo/punktgenau/commit/9f307bd4fcec24fa33e5ce7cebda127a3ddd824b))
+* **turniere:** Uhrzeit, eigener Verband als Standard, Turnier im Browser öffnen ([54cc4ee](https://github.com/1Thillo/punktgenau/commit/54cc4eeaecd91869a53297b5f5bb8b9d1a837c4e))
+
+
+### Bug Fixes
+
+* **turniere:** Verband-Chips waagerecht scrollbar ([f737f39](https://github.com/1Thillo/punktgenau/commit/f737f3936b9d662b36c05c0a60e3c29feaa56482))
+* **turniere:** Zeitraum und alle Verbände ausdrücklich abrufen ([97e1d05](https://github.com/1Thillo/punktgenau/commit/97e1d05daec715ceb78ce21bbcccb318c4ed11ac))
+
 ## [0.12.0](https://github.com/1Thillo/punktgenau/compare/v0.11.0...v0.12.0) (2026-11-27)
 
 
