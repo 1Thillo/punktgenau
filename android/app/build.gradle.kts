@@ -6,9 +6,9 @@ plugins {
 
 // Version: wird von release-please gesetzt (Marker nicht entfernen).
 val appVersionName = "0.13.0" // x-release-please-version
-val appVersionCode = appVersionName.split(".").let { (major, minor, patch) ->
-    major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt()
-}
+// Bei jedem Release von Hand setzen: Major*10000 + Minor*100 + Patch, z. B. 0.13.0 -> 1300.
+// F-Droid liest diesen Wert in der UpdateCheckData-Angabe aus.
+val appVersionCode = 1300
 
 android {
     namespace = "app.punktgenau"
